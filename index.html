@@ -405,10 +405,37 @@ function startSync() {
 
 // ── SCRAPE HKTVMALL ──
 async function fetchPageHtml(url) {
+  // Normalise short mobile links: /p/XXXX → try to resolve via allorigins which returns final URL
   for (const makeProxy of PROXIES) {
     try {
       const res = await fetch(makeProxy(url), { signal: AbortSignal.timeout(8000) });
-      if (res.ok) return await res.text();
+      if (!res.ok) continue;
+      const html = await res.text();
+
+      // If we got a redirect / empty page (no JSON-LD, no og:title), try to extract redirect target
+      if (!html.includes('application/ld+json') && !html.includes('og:title')) {
+        // Look for meta-refresh or canonical redirect
+        const canon = html.match(/<link[^>]+rel=["']canonical["'][^>]+href=["']([^"']+)["']/i)
+                   || html.match(/<meta[^>]+http-equiv=["']refresh["'][^>]+content=["'][^"']*url=([^"'\s]+)/i);
+        if (canon && canon[1] && canon[1] !== url) {
+          // Recurse once with the resolved URL
+          return await fetchPageHtml(canon[1]);
+        }
+        // Try fetching the URL with allorigins which returns JSON with contents + final_url
+        try {
+          const aoRes = await fetch(`https://api.allorigins.win/get?url=${encodeURIComponent(url)}`, { signal: AbortSignal.timeout(8000) });
+          if (aoRes.ok) {
+            const aoData = await aoRes.json();
+            if (aoData.contents && aoData.contents.includes('application/ld+json')) return aoData.contents;
+            // If allorigins gives us a final URL different from input, fetch that
+            if (aoData.status?.url && aoData.status.url !== url) {
+              return await fetchPageHtml(aoData.status.url);
+            }
+          }
+        } catch {}
+        continue; // this proxy gave junk, try next
+      }
+      return html;
     } catch {}
   }
   return null;
