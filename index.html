@@ -430,12 +430,13 @@ function parseProductFromHtml(html) {
         const offers = prod.offers;
         if (offers) {
           const offerList = Array.isArray(offers) ? offers : [offers];
-          // Prefer highPrice (bundle/box price) over single-unit price
-          let best = 0;
+          // Take the lowest price across all offers
+          let best = Infinity;
           for (const offer of offerList) {
-            const p = parseFloat(offer.highPrice || offer.price || offer.lowPrice || 0);
-            if (p > best) best = p;
+            const p = parseFloat(offer.lowPrice || offer.price || offer.highPrice || 0);
+            if (p > 0 && p < best) best = p;
           }
+          if (best === Infinity) best = 0;
           if (best > 0) result.price = best;
         }
         if (result.name && result.price > 0) return result;
