@@ -21,33 +21,30 @@
   * { box-sizing: border-box; margin: 0; padding: 0; }
   body {
     font-family: 'Noto Sans HK', sans-serif;
-    background: var(--bg);
-    color: var(--text);
-    min-height: 100vh;
-    padding: 0 0 80px;
+    background: var(--bg); color: var(--text);
+    min-height: 100vh; padding: 0 0 80px;
   }
 
+  /* HEADER */
   header {
     background: var(--accent);
     padding: 28px 24px 22px;
-    position: relative;
-    overflow: hidden;
+    position: relative; overflow: hidden;
   }
   header::before {
-    content: '';
-    position: absolute;
+    content: ''; position: absolute;
     right: -40px; top: -40px;
     width: 180px; height: 180px;
-    background: rgba(255,255,255,0.08);
-    border-radius: 50%;
+    background: rgba(255,255,255,0.08); border-radius: 50%;
   }
-  .header-inner { max-width: 680px; margin: 0 auto; position: relative; z-index: 1; }
-  header h1 { font-size: 26px; font-weight: 900; color: #fff; letter-spacing: -0.5px; }
+  .header-inner { max-width: 680px; margin: 0 auto; position: relative; z-index: 1; display: flex; flex-direction: column; }
+  .header-top { display: flex; align-items: flex-start; justify-content: space-between; }
+  .header-left {}
+  header h1 { font-size: 26px; font-weight: 900; color: #fff; letter-spacing: -0.5px; margin-top: 6px; }
   header p { color: rgba(255,255,255,0.80); font-size: 13px; margin-top: 4px; }
-  .badges { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; flex-wrap: wrap; }
+  .badges { display: flex; align-items: center; gap: 8px; margin-bottom: 4px; flex-wrap: wrap; }
   .round-badge {
-    display: inline-block;
-    background: rgba(255,255,255,0.20);
+    display: inline-block; background: rgba(255,255,255,0.20);
     color: #fff; font-size: 12px; font-weight: 700;
     padding: 3px 10px; border-radius: 20px;
   }
@@ -58,47 +55,90 @@
     padding: 3px 10px; border-radius: 20px;
   }
   .live-dot::before {
-    content: '';
-    width: 6px; height: 6px;
+    content: ''; width: 6px; height: 6px;
     background: #4cff91; border-radius: 50%;
     animation: pulse 1.5s infinite;
   }
   @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.3; } }
 
-  .main { max-width: 680px; margin: 0 auto; padding: 24px 16px 0; }
-
-  .card {
-    background: var(--surface);
-    border-radius: var(--radius);
-    border: 1.5px solid var(--border);
-    padding: 20px; margin-bottom: 20px;
-    box-shadow: var(--shadow);
+  /* SETTINGS BUTTON */
+  .btn-settings {
+    background: rgba(255,255,255,0.18);
+    border: 1.5px solid rgba(255,255,255,0.3);
+    color: #fff; border-radius: 10px;
+    width: 38px; height: 38px;
+    display: flex; align-items: center; justify-content: center;
+    cursor: pointer; font-size: 18px;
+    transition: background 0.2s;
+    flex-shrink: 0; margin-top: 2px;
   }
-  .card-title { font-size: 15px; font-weight: 700; margin-bottom: 14px; display: flex; align-items: center; gap: 8px; }
-
-  .api-setup {
-    background: #f0f7ff; border: 1.5px solid #b3d4f5;
-    border-radius: var(--radius); padding: 14px 18px;
-    margin-bottom: 20px;
-    display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+  .btn-settings:hover { background: rgba(255,255,255,0.28); }
+  .key-indicator {
+    font-size: 10px; color: rgba(255,255,255,0.7);
+    margin-top: 4px; text-align: center;
   }
-  .api-setup label { color: #1565c0; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px; font-weight: 700; white-space: nowrap; margin: 0; }
-  .api-setup input {
-    flex: 1; min-width: 180px; padding: 8px 12px;
-    border: 1.5px solid #b3d4f5; border-radius: 8px;
+  .key-indicator.set { color: #a8ffce; }
+
+  /* MODAL */
+  .modal-overlay {
+    display: none; position: fixed; inset: 0;
+    background: rgba(0,0,0,0.45);
+    z-index: 1000; align-items: center; justify-content: center;
+    padding: 20px;
+  }
+  .modal-overlay.show { display: flex; }
+  .modal {
+    background: #fff; border-radius: 20px;
+    padding: 24px; width: 100%; max-width: 400px;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.2);
+    animation: modalIn 0.25s cubic-bezier(0.34,1.56,0.64,1);
+  }
+  @keyframes modalIn { from { opacity: 0; transform: scale(0.92) translateY(10px); } to { opacity: 1; transform: scale(1) translateY(0); } }
+  .modal-title {
+    font-size: 17px; font-weight: 900; margin-bottom: 18px;
+    display: flex; align-items: center; justify-content: space-between;
+  }
+  .btn-modal-close {
+    background: #f5f5f5; border: none; border-radius: 8px;
+    width: 30px; height: 30px; cursor: pointer;
+    font-size: 16px; display: flex; align-items: center; justify-content: center;
+    color: #888; transition: background 0.15s;
+  }
+  .btn-modal-close:hover { background: #eee; color: #333; }
+  .modal-label { font-size: 12px; font-weight: 700; color: var(--text2); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 6px; }
+  .modal-input-row { display: flex; gap: 8px; margin-bottom: 14px; }
+  .modal-input-row input {
+    flex: 1; padding: 10px 12px;
+    border: 1.5px solid var(--border); border-radius: 10px;
     font-size: 13px; font-family: monospace;
-    background: #fff; color: #1a1a1a; outline: none;
+    background: var(--surface2); outline: none;
   }
-  .api-setup input:focus { border-color: #1976d2; }
-  .btn-save-key {
-    background: #1976d2; color: #fff; border: none; border-radius: 8px;
-    padding: 8px 14px; font-size: 13px; font-weight: 700;
+  .modal-input-row input:focus { border-color: var(--accent); background: #fff; }
+  .btn-modal-save {
+    background: var(--accent); color: #fff;
+    border: none; border-radius: 10px;
+    padding: 10px 16px; font-size: 13px; font-weight: 700;
     cursor: pointer; font-family: inherit; white-space: nowrap;
   }
-  .btn-save-key:hover { background: #1565c0; }
-  .key-status { font-size: 12px; color: #388e3c; font-weight: 600; }
-  .key-link { font-size: 12px; color: #1976d2; text-decoration: none; }
-  .key-link:hover { text-decoration: underline; }
+  .btn-modal-save:hover { background: #e55a27; }
+  .modal-hint {
+    font-size: 12px; color: var(--text2); margin-top: -6px; margin-bottom: 4px;
+    display: flex; align-items: center; justify-content: space-between;
+  }
+  .modal-hint a { color: var(--accent); text-decoration: none; font-weight: 600; }
+  .modal-hint a:hover { text-decoration: underline; }
+  .key-saved-msg { font-size: 12px; color: #388e3c; font-weight: 600; }
+
+  /* MAIN */
+  .main { max-width: 680px; margin: 0 auto; padding: 24px 16px 0; }
+
+  /* CARD */
+  .card {
+    background: var(--surface); border-radius: var(--radius);
+    border: 1.5px solid var(--border); padding: 20px;
+    margin-bottom: 20px; box-shadow: var(--shadow);
+  }
+  .card-title { font-size: 15px; font-weight: 700; margin-bottom: 14px; display: flex; align-items: center; gap: 8px; }
 
   .form-row { display: flex; gap: 10px; margin-bottom: 10px; }
   .form-row.stacked { flex-direction: column; }
@@ -164,6 +204,7 @@
   }
   .error-msg.show { display: block; }
 
+  /* SUMMARY */
   .summary-bar {
     background: linear-gradient(135deg, var(--accent) 0%, #ff8c5a 100%);
     border-radius: var(--radius); padding: 16px 20px; margin-bottom: 20px;
@@ -280,25 +321,43 @@
 
 <header>
   <div class="header-inner">
-    <div class="badges">
-      <span class="round-badge">🧃 公司團購</span>
-      <span class="live-dot">即時同步</span>
+    <div class="header-top">
+      <div class="header-left">
+        <div class="badges">
+          <span class="round-badge">🧃 公司團購</span>
+          <span class="live-dot">即時同步</span>
+        </div>
+        <h1>飲品訂購清單</h1>
+        <p>貼上 HKTVmall 連結，自動抓取產品資訊</p>
+      </div>
+      <div style="display:flex;flex-direction:column;align-items:center;gap:4px">
+        <button class="btn-settings" onclick="openSettings()" title="設定">⚙️</button>
+        <div class="key-indicator" id="key-indicator">未設定</div>
+      </div>
     </div>
-    <h1>飲品訂購清單</h1>
-    <p>貼上 HKTVmall 連結，自動抓取產品資訊</p>
   </div>
 </header>
 
-<div class="main">
-
-  <!-- GEMINI API KEY -->
-  <div class="api-setup" id="api-setup">
-    <label>🔑 Gemini Key</label>
-    <input type="password" id="api-key-input" placeholder="AIza..." autocomplete="off">
-    <button class="btn-save-key" onclick="saveKey()">儲存</button>
-    <span class="key-status" id="key-status"></span>
-    <a class="key-link" href="https://aistudio.google.com/app/apikey" target="_blank">免費攞 Key →</a>
+<!-- SETTINGS MODAL -->
+<div class="modal-overlay" id="settings-modal" onclick="handleOverlayClick(event)">
+  <div class="modal">
+    <div class="modal-title">
+      ⚙️ 設定
+      <button class="btn-modal-close" onclick="closeSettings()">✕</button>
+    </div>
+    <div class="modal-label">Gemini API Key</div>
+    <div class="modal-input-row">
+      <input type="password" id="api-key-input" placeholder="AIza..." autocomplete="off">
+      <button class="btn-modal-save" onclick="saveKey()">儲存</button>
+    </div>
+    <div class="modal-hint">
+      <span id="key-saved-msg" class="key-saved-msg"></span>
+      <a href="https://aistudio.google.com/app/apikey" target="_blank">免費攞 Key →</a>
+    </div>
   </div>
+</div>
+
+<div class="main">
 
   <!-- ADD FORM -->
   <div class="card">
@@ -380,7 +439,6 @@ const SUPABASE_KEY = 'sb_publishable_a0cbx2oNEfR3uiFVG7vvIw_AjbVaYZx';
 const TABLE = 'drink_orders';
 const db = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
-// ── STATE ──
 let orders = [];
 let qty = 1;
 
@@ -390,12 +448,45 @@ function changeQty(delta) {
   document.getElementById('qty-input').value = qty;
 }
 
+// ── SETTINGS MODAL ──
+function openSettings() {
+  document.getElementById('settings-modal').className = 'modal-overlay show';
+  const key = getKey();
+  if (key) document.getElementById('api-key-input').value = key;
+  document.getElementById('key-saved-msg').textContent = key ? '✅ 已設定' : '';
+}
+function closeSettings() {
+  document.getElementById('settings-modal').className = 'modal-overlay';
+}
+function handleOverlayClick(e) {
+  if (e.target === document.getElementById('settings-modal')) closeSettings();
+}
+
+// ── GEMINI KEY ──
+function saveKey() {
+  const key = document.getElementById('api-key-input').value.trim();
+  if (!key) return;
+  localStorage.setItem('gemini_key', key);
+  updateKeyIndicator();
+  document.getElementById('key-saved-msg').textContent = '✅ 已儲存！';
+  setTimeout(closeSettings, 800);
+}
+function getKey() { return localStorage.getItem('gemini_key') || ''; }
+function updateKeyIndicator() {
+  const el = document.getElementById('key-indicator');
+  if (getKey()) {
+    el.textContent = 'Key ✅';
+    el.className = 'key-indicator set';
+  } else {
+    el.textContent = '未設定';
+    el.className = 'key-indicator';
+  }
+}
+
 // ── LOAD FROM SUPABASE ──
 async function loadOrders() {
   const { data, error } = await db
-    .from(TABLE)
-    .select('*')
-    .order('created_at', { ascending: true });
+    .from(TABLE).select('*').order('created_at', { ascending: true });
   if (error) { console.error(error); return; }
   orders = data || [];
   render();
@@ -438,45 +529,22 @@ async function addOrder() {
 
 // ── REMOVE ──
 async function removeOrder(id) {
-  const { error } = await db.from(TABLE).delete().eq('id', id);
-  if (error) showToast('❌ 移除失敗');
+  await db.from(TABLE).delete().eq('id', id);
 }
 
 // ── CLEAR ALL ──
 async function clearAll() {
   if (!confirm('確定清除所有落單紀錄？')) return;
-  const { error } = await db.from(TABLE).delete().neq('id', 0);
-  if (error) showToast('❌ 清除失敗');
+  await db.from(TABLE).delete().neq('id', 0);
 }
 
-// ── GEMINI KEY ──
-function saveKey() {
-  const key = document.getElementById('api-key-input').value.trim();
-  if (!key) return;
-  localStorage.setItem('gemini_key', key);
-  updateKeyStatus();
-  showToast('🔑 API Key 已儲存');
-}
-function getKey() { return localStorage.getItem('gemini_key') || ''; }
-function updateKeyStatus() {
-  const key = getKey();
-  const el = document.getElementById('key-status');
-  const setup = document.getElementById('api-setup');
-  if (key) {
-    el.textContent = '✅ 已設定';
-    setup.style.borderColor = '#a5d6a7';
-    setup.style.background = '#f1f8f1';
-  } else {
-    el.textContent = '';
-    setup.style.borderColor = '#b3d4f5';
-    setup.style.background = '#f0f7ff';
-  }
-}
-
-// ── FETCH PRODUCT VIA GEMINI ──
+// ── FETCH PRODUCT VIA GEMINI 2.5 FLASH ──
 async function fetchProductInfo(url) {
   const key = getKey();
-  if (!key) throw new Error('請先輸入並儲存 Gemini API Key');
+  if (!key) {
+    openSettings();
+    throw new Error('請先喺右上角 ⚙️ 設定 Gemini API Key');
+  }
 
   const prompt = `請幫我查詢以下 HKTVmall 產品連結的資訊：
 ${url}
@@ -486,7 +554,7 @@ ${url}
 price 搵唔到就用 0，image 搵唔到就用空字串。`;
 
   const res = await fetch(
-    `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${key}`,
+    `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${key}`,
     {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -501,7 +569,7 @@ price 搵唔到就用 0，image 搵唔到就用空字串。`;
   if (!res.ok) {
     const err = await res.json().catch(() => ({}));
     const msg = err.error?.message || `API error ${res.status}`;
-    if (res.status === 400) throw new Error('API Key 無效，請檢查');
+    if (res.status === 400) throw new Error('API Key 無效，請重新設定');
     if (res.status === 429) throw new Error('超過 API 使用限額，請稍後再試');
     throw new Error(msg);
   }
@@ -635,8 +703,7 @@ function showError(msg) {
 }
 function showToast(msg) {
   const t = document.getElementById('toast');
-  t.textContent = msg;
-  t.className = 'toast show';
+  t.textContent = msg; t.className = 'toast show';
   setTimeout(() => t.className = 'toast', 2500);
 }
 function escHtml(s) {
@@ -647,7 +714,7 @@ function escHtml(s) {
 document.addEventListener('DOMContentLoaded', () => {
   document.getElementById('url-input').addEventListener('keydown', e => { if (e.key === 'Enter') addOrder(); });
   document.getElementById('api-key-input').addEventListener('keydown', e => { if (e.key === 'Enter') saveKey(); });
-  updateKeyStatus();
+  updateKeyIndicator();
   loadOrders();
   subscribeRealtime();
 });
