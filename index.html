@@ -263,12 +263,6 @@
       <label for="url-input">HKTVmall 產品連結</label>
       <input type="url" id="url-input" placeholder="https://www.hktvmall.com/hktv/zh/...">
     </div>
-    <div class="form-row" style="margin-top:10px;gap:10px">
-      <div style="flex:1">
-        <label for="price-override">價錢 (HK$) <span id="price-hint" style="font-weight:400;text-transform:none;letter-spacing:0;color:#bbb;font-size:11px">— 自動抓取，可改</span></label>
-        <input type="text" id="price-override" placeholder="自動抓取" inputmode="decimal" style="text-align:right">
-      </div>
-    </div>
     <div class="form-row" style="align-items:flex-end;margin-top:10px;margin-bottom:12px">
       <div style="flex:1"></div>
       <div>
@@ -523,9 +517,6 @@ async function fetchProductInfo(url) {
     product = await enrichWithGemini(url, product);
   }
   if (!product.name) throw new Error('未能取得產品資訊，請確認連結正確');
-  // Pre-fill price field so user can verify/correct before submitting
-  const priceField = document.getElementById('price-override');
-  if (product.price && !priceField.value) priceField.value = product.price;
   return product;
 }
 
@@ -540,28 +531,20 @@ async function addOrder() {
   setLoading(true);
   try {
     const product = await fetchProductInfo(url);
-    // Allow user to override price
-    const priceOverride = parseFloat(document.getElementById('price-override').value);
-    if (!isNaN(priceOverride) && priceOverride > 0) product.price = priceOverride;
-
     // Check if same person already has this exact URL — merge qty instead of new row
     const existing = orders.find(o => o.person_name === name && o.url === url);
     if (existing) {
       const newQty = existing.qty + qty;
       const { error } = await db.from('drink_orders').update({ qty: newQty }).eq('id', existing.id);
       if (error) throw new Error('更新失敗：' + error.message);
-      document.getElementById('url-input').value = '';
-      qty = 1; document.getElementById('qty-input').value = 1;
-      document.getElementById('price-override').value = '';
       showToast(`✅ 數量更新為 ×${newQty}！`);
     } else {
       const { error } = await db.from('drink_orders').insert({ person_name: name, product, qty, url });
       if (error) throw new Error('儲存失敗：' + error.message);
-      document.getElementById('url-input').value = '';
-      qty = 1; document.getElementById('qty-input').value = 1;
-      document.getElementById('price-override').value = '';
       showToast('✅ 已加落單！');
     }
+    document.getElementById('url-input').value = '';
+    qty = 1; document.getElementById('qty-input').value = 1;
     await loadOrders();
   } catch(e) { showError(e.message); }
   finally { setLoading(false); }
