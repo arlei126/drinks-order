@@ -8,106 +8,42 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
   :root {
-    --bg: #fdf6ec;
-    --surface: #ffffff;
-    --surface2: #fff9f0;
-    --accent: #ff6b35;
-    --text: #1a1a1a;
-    --text2: #6b6b6b;
-    --border: #f0e0cc;
-    --shadow: 0 4px 24px rgba(255,107,53,0.10);
-    --radius: 16px;
+    --bg: #fdf6ec; --surface: #ffffff; --surface2: #fff9f0;
+    --accent: #ff6b35; --text: #1a1a1a; --text2: #6b6b6b;
+    --border: #f0e0cc; --shadow: 0 4px 24px rgba(255,107,53,0.10); --radius: 16px;
   }
   * { box-sizing: border-box; margin: 0; padding: 0; }
-  body {
-    font-family: 'Noto Sans HK', sans-serif;
-    background: var(--bg); color: var(--text);
-    min-height: 100vh; padding: 0 0 80px;
-  }
+  body { font-family: 'Noto Sans HK', sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; padding: 0 0 80px; }
 
-  header {
-    background: var(--accent);
-    padding: 28px 24px 22px;
-    position: relative; overflow: hidden;
-  }
-  header::before {
-    content: ''; position: absolute;
-    right: -40px; top: -40px;
-    width: 180px; height: 180px;
-    background: rgba(255,255,255,0.08); border-radius: 50%;
-  }
+  header { background: var(--accent); padding: 28px 24px 22px; position: relative; overflow: hidden; }
+  header::before { content: ''; position: absolute; right: -40px; top: -40px; width: 180px; height: 180px; background: rgba(255,255,255,0.08); border-radius: 50%; }
   .header-inner { max-width: 680px; margin: 0 auto; position: relative; z-index: 1; }
   .header-top { display: flex; align-items: flex-start; justify-content: space-between; }
   header h1 { font-size: 26px; font-weight: 900; color: #fff; letter-spacing: -0.5px; margin-top: 6px; }
   header p { color: rgba(255,255,255,0.80); font-size: 13px; margin-top: 4px; }
   .badges { display: flex; align-items: center; gap: 8px; margin-bottom: 4px; flex-wrap: wrap; }
-  .round-badge {
-    display: inline-block; background: rgba(255,255,255,0.20);
-    color: #fff; font-size: 12px; font-weight: 700;
-    padding: 3px 10px; border-radius: 20px;
-  }
-  .live-dot {
-    display: inline-flex; align-items: center; gap: 5px;
-    background: rgba(255,255,255,0.15);
-    color: #fff; font-size: 11px; font-weight: 600;
-    padding: 3px 10px; border-radius: 20px;
-  }
-  .live-dot::before {
-    content: ''; width: 6px; height: 6px;
-    background: #4cff91; border-radius: 50%;
-    animation: pulse 1.5s infinite;
-  }
+  .round-badge { display: inline-block; background: rgba(255,255,255,0.20); color: #fff; font-size: 12px; font-weight: 700; padding: 3px 10px; border-radius: 20px; }
+  .live-dot { display: inline-flex; align-items: center; gap: 5px; background: rgba(255,255,255,0.15); color: #fff; font-size: 11px; font-weight: 600; padding: 3px 10px; border-radius: 20px; }
+  .live-dot::before { content: ''; width: 6px; height: 6px; background: #4cff91; border-radius: 50%; animation: pulse 1.5s infinite; }
   @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.3; } }
 
-  .btn-settings {
-    background: rgba(255,255,255,0.18);
-    border: 1.5px solid rgba(255,255,255,0.3);
-    color: #fff; border-radius: 10px;
-    width: 38px; height: 38px;
-    display: flex; align-items: center; justify-content: center;
-    cursor: pointer; font-size: 18px;
-    transition: background 0.2s; flex-shrink: 0; margin-top: 2px;
-  }
+  .btn-settings { background: rgba(255,255,255,0.18); border: 1.5px solid rgba(255,255,255,0.3); color: #fff; border-radius: 10px; width: 38px; height: 38px; display: flex; align-items: center; justify-content: center; cursor: pointer; font-size: 18px; transition: background 0.2s; flex-shrink: 0; margin-top: 2px; }
   .btn-settings:hover { background: rgba(255,255,255,0.28); }
   .key-indicator { font-size: 10px; color: rgba(255,255,255,0.7); margin-top: 4px; text-align: center; }
   .key-indicator.set { color: #a8ffce; }
 
-  /* MODAL */
-  .modal-overlay {
-    display: none; position: fixed; inset: 0;
-    background: rgba(0,0,0,0.45);
-    z-index: 1000; align-items: center; justify-content: center; padding: 20px;
-  }
+  .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.45); z-index: 1000; align-items: center; justify-content: center; padding: 20px; }
   .modal-overlay.show { display: flex; }
-  .modal {
-    background: #fff; border-radius: 20px; padding: 24px;
-    width: 100%; max-width: 400px;
-    box-shadow: 0 20px 60px rgba(0,0,0,0.2);
-    animation: modalIn 0.25s cubic-bezier(0.34,1.56,0.64,1);
-  }
+  .modal { background: #fff; border-radius: 20px; padding: 24px; width: 100%; max-width: 400px; box-shadow: 0 20px 60px rgba(0,0,0,0.2); animation: modalIn 0.25s cubic-bezier(0.34,1.56,0.64,1); }
   @keyframes modalIn { from { opacity: 0; transform: scale(0.92) translateY(10px); } to { opacity: 1; transform: scale(1) translateY(0); } }
   .modal-title { font-size: 17px; font-weight: 900; margin-bottom: 18px; display: flex; align-items: center; justify-content: space-between; }
-  .btn-modal-close {
-    background: #f5f5f5; border: none; border-radius: 8px;
-    width: 30px; height: 30px; cursor: pointer; font-size: 16px;
-    display: flex; align-items: center; justify-content: center;
-    color: #888; transition: background 0.15s;
-  }
+  .btn-modal-close { background: #f5f5f5; border: none; border-radius: 8px; width: 30px; height: 30px; cursor: pointer; font-size: 16px; display: flex; align-items: center; justify-content: center; color: #888; }
   .btn-modal-close:hover { background: #eee; color: #333; }
   .modal-label { font-size: 12px; font-weight: 700; color: var(--text2); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 6px; }
   .modal-input-row { display: flex; gap: 8px; margin-bottom: 14px; }
-  .modal-input-row input {
-    flex: 1; padding: 10px 12px;
-    border: 1.5px solid var(--border); border-radius: 10px;
-    font-size: 13px; font-family: monospace;
-    background: var(--surface2); outline: none;
-  }
+  .modal-input-row input { flex: 1; padding: 10px 12px; border: 1.5px solid var(--border); border-radius: 10px; font-size: 13px; font-family: monospace; background: var(--surface2); outline: none; }
   .modal-input-row input:focus { border-color: var(--accent); background: #fff; }
-  .btn-modal-save {
-    background: var(--accent); color: #fff; border: none; border-radius: 10px;
-    padding: 10px 16px; font-size: 13px; font-weight: 700;
-    cursor: pointer; font-family: inherit; white-space: nowrap;
-  }
+  .btn-modal-save { background: var(--accent); color: #fff; border: none; border-radius: 10px; padding: 10px 16px; font-size: 13px; font-weight: 700; cursor: pointer; font-family: inherit; white-space: nowrap; }
   .btn-modal-save:hover { background: #e55a27; }
   .modal-hint { font-size: 12px; color: var(--text2); display: flex; align-items: center; justify-content: space-between; }
   .modal-hint a { color: var(--accent); text-decoration: none; font-weight: 600; }
@@ -115,83 +51,34 @@
   .key-saved-msg { font-size: 12px; color: #388e3c; font-weight: 600; }
 
   .main { max-width: 680px; margin: 0 auto; padding: 24px 16px 0; }
-
-  .card {
-    background: var(--surface); border-radius: var(--radius);
-    border: 1.5px solid var(--border); padding: 20px;
-    margin-bottom: 20px; box-shadow: var(--shadow);
-  }
+  .card { background: var(--surface); border-radius: var(--radius); border: 1.5px solid var(--border); padding: 20px; margin-bottom: 20px; box-shadow: var(--shadow); }
   .card-title { font-size: 15px; font-weight: 700; margin-bottom: 14px; display: flex; align-items: center; gap: 8px; }
 
   .form-row { display: flex; gap: 10px; margin-bottom: 10px; }
   .form-row.stacked { flex-direction: column; }
   label { font-size: 12px; font-weight: 700; color: var(--text2); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 5px; display: block; }
-  input[type="text"], input[type="url"] {
-    width: 100%; padding: 11px 14px;
-    border: 1.5px solid var(--border); border-radius: 10px;
-    font-size: 14px; font-family: inherit;
-    background: var(--surface2); color: var(--text); outline: none;
-    transition: border-color 0.2s;
-  }
+  input[type="text"], input[type="url"] { width: 100%; padding: 11px 14px; border: 1.5px solid var(--border); border-radius: 10px; font-size: 14px; font-family: inherit; background: var(--surface2); color: var(--text); outline: none; transition: border-color 0.2s; }
   input:focus { border-color: var(--accent); background: #fff; }
   input::placeholder { color: #bbb; }
 
-  .qty-wrap {
-    display: flex; align-items: center;
-    border: 1.5px solid var(--border); border-radius: 10px;
-    overflow: hidden; background: var(--surface2);
-    width: 110px; flex-shrink: 0;
-  }
-  .qty-btn {
-    background: none; border: none; cursor: pointer;
-    width: 36px; height: 44px; font-size: 18px;
-    color: var(--accent); font-weight: 700; transition: background 0.15s;
-  }
+  .qty-wrap { display: flex; align-items: center; border: 1.5px solid var(--border); border-radius: 10px; overflow: hidden; background: var(--surface2); width: 110px; flex-shrink: 0; }
+  .qty-btn { background: none; border: none; cursor: pointer; width: 36px; height: 44px; font-size: 18px; color: var(--accent); font-weight: 700; transition: background 0.15s; }
   .qty-btn:hover { background: rgba(255,107,53,0.08); }
-  #qty-input {
-    width: 38px; border: none; background: none;
-    text-align: center; font-size: 15px; font-weight: 700;
-    padding: 0; color: var(--text); outline: none;
-  }
+  #qty-input { width: 38px; border: none; background: none; text-align: center; font-size: 15px; font-weight: 700; padding: 0; color: var(--text); outline: none; }
 
-  .btn-add {
-    width: 100%; background: var(--accent); color: #fff;
-    border: none; border-radius: 10px; padding: 13px;
-    font-size: 15px; font-weight: 700; font-family: inherit;
-    cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px;
-    transition: background 0.18s, transform 0.1s;
-  }
+  .btn-add { width: 100%; background: var(--accent); color: #fff; border: none; border-radius: 10px; padding: 13px; font-size: 15px; font-weight: 700; font-family: inherit; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px; transition: background 0.18s, transform 0.1s; }
   .btn-add:hover { background: #e55a27; }
   .btn-add:active { transform: scale(0.98); }
   .btn-add:disabled { background: #ccc; cursor: not-allowed; }
 
-  .loading-bar {
-    display: none; align-items: center; gap: 10px;
-    padding: 12px 14px; background: #fff8f0;
-    border-radius: 10px; margin-top: 10px;
-    font-size: 13px; color: var(--accent); font-weight: 600;
-  }
+  .loading-bar { display: none; align-items: center; gap: 10px; padding: 12px 14px; background: #fff8f0; border-radius: 10px; margin-top: 10px; font-size: 13px; color: var(--accent); font-weight: 600; }
   .loading-bar.show { display: flex; }
-  .spinner {
-    width: 18px; height: 18px;
-    border: 2.5px solid rgba(255,107,53,0.2);
-    border-top-color: var(--accent); border-radius: 50%;
-    animation: spin 0.7s linear infinite; flex-shrink: 0;
-  }
+  .spinner { width: 18px; height: 18px; border: 2.5px solid rgba(255,107,53,0.2); border-top-color: var(--accent); border-radius: 50%; animation: spin 0.7s linear infinite; flex-shrink: 0; }
   @keyframes spin { to { transform: rotate(360deg); } }
-  .error-msg {
-    display: none; padding: 10px 14px;
-    background: #fff0f0; border-radius: 10px; margin-top: 10px;
-    font-size: 13px; color: #e53935; font-weight: 500;
-  }
+  .error-msg { display: none; padding: 10px 14px; background: #fff0f0; border-radius: 10px; margin-top: 10px; font-size: 13px; color: #e53935; font-weight: 500; }
   .error-msg.show { display: block; }
 
-  .summary-bar {
-    background: linear-gradient(135deg, var(--accent) 0%, #ff8c5a 100%);
-    border-radius: var(--radius); padding: 16px 20px; margin-bottom: 20px;
-    display: flex; align-items: center; justify-content: space-between;
-    color: #fff; box-shadow: 0 6px 20px rgba(255,107,53,0.25);
-  }
+  .summary-bar { background: linear-gradient(135deg, var(--accent) 0%, #ff8c5a 100%); border-radius: var(--radius); padding: 16px 20px; margin-bottom: 20px; display: flex; align-items: center; justify-content: space-between; color: #fff; box-shadow: 0 6px 20px rgba(255,107,53,0.25); }
   .summary-bar .label { font-size: 13px; opacity: 0.85; }
   .summary-bar .total { font-size: 26px; font-weight: 900; letter-spacing: -1px; }
   .summary-stats { display: flex; gap: 20px; }
@@ -202,18 +89,9 @@
 
   .section-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
   .section-title { font-size: 15px; font-weight: 800; }
-  .btn-copy {
-    font-size: 12px; font-weight: 600; color: var(--accent);
-    background: rgba(255,107,53,0.08); border: none;
-    border-radius: 8px; padding: 5px 12px; cursor: pointer;
-    font-family: inherit; transition: background 0.15s;
-  }
+  .btn-copy { font-size: 12px; font-weight: 600; color: var(--accent); background: rgba(255,107,53,0.08); border: none; border-radius: 8px; padding: 5px 12px; cursor: pointer; font-family: inherit; transition: background 0.15s; }
   .btn-copy:hover { background: rgba(255,107,53,0.15); }
-  .btn-clear {
-    font-size: 12px; font-weight: 600; color: #aaa;
-    background: none; border: 1px solid #e0e0e0; border-radius: 8px;
-    padding: 5px 12px; cursor: pointer; font-family: inherit; transition: all 0.15s;
-  }
+  .btn-clear { font-size: 12px; font-weight: 600; color: #aaa; background: none; border: 1px solid #e0e0e0; border-radius: 8px; padding: 5px 12px; cursor: pointer; font-family: inherit; transition: all 0.15s; }
   .btn-clear:hover { color: #e53935; border-color: #e53935; background: #fff0f0; }
 
   .empty-state { text-align: center; padding: 40px 20px; color: var(--text2); font-size: 14px; }
@@ -222,80 +100,33 @@
   .person-group { margin-bottom: 16px; animation: fadeIn 0.35s ease; }
   @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
   .person-header { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
-  .avatar {
-    width: 28px; height: 28px; border-radius: 50%;
-    font-size: 13px; font-weight: 800; color: #fff;
-    display: flex; align-items: center; justify-content: center; flex-shrink: 0;
-  }
+  .avatar { width: 28px; height: 28px; border-radius: 50%; font-size: 13px; font-weight: 800; color: #fff; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
   .person-name { font-size: 14px; font-weight: 700; }
   .person-subtotal { margin-left: auto; font-size: 13px; font-weight: 700; color: var(--accent); }
 
-  .item-card {
-    background: var(--surface); border: 1.5px solid var(--border);
-    border-radius: 12px; padding: 12px 14px;
-    display: flex; align-items: flex-start; gap: 12px;
-    margin-bottom: 8px; transition: box-shadow 0.2s;
-  }
+  .item-card { background: var(--surface); border: 1.5px solid var(--border); border-radius: 12px; padding: 12px 14px; display: flex; align-items: flex-start; gap: 12px; margin-bottom: 8px; transition: box-shadow 0.2s; }
   .item-card:hover { box-shadow: 0 2px 12px rgba(0,0,0,0.06); }
-  .item-img {
-    width: 56px; height: 56px; border-radius: 8px;
-    object-fit: cover; background: #f5f5f5;
-    flex-shrink: 0; border: 1px solid #eee;
-  }
-  .img-placeholder {
-    width: 56px; height: 56px; border-radius: 8px;
-    background: linear-gradient(135deg, #ffe0cc, #ffd0b0);
-    display: flex; align-items: center; justify-content: center;
-    font-size: 24px; flex-shrink: 0;
-  }
+  .item-img { width: 56px; height: 56px; border-radius: 8px; object-fit: cover; background: #f5f5f5; flex-shrink: 0; border: 1px solid #eee; }
+  .img-placeholder { width: 56px; height: 56px; border-radius: 8px; background: linear-gradient(135deg, #ffe0cc, #ffd0b0); display: flex; align-items: center; justify-content: center; font-size: 24px; flex-shrink: 0; }
   .item-info { flex: 1; min-width: 0; }
-  .item-name {
-    font-size: 13px; font-weight: 600; line-height: 1.4; margin-bottom: 4px;
-    display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
-  }
+  .item-name { font-size: 13px; font-weight: 600; line-height: 1.4; margin-bottom: 4px; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
   .item-meta { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
   .item-price { font-size: 15px; font-weight: 800; color: var(--accent); }
-  .item-qty-badge {
-    font-size: 11px; font-weight: 700;
-    background: var(--surface2); color: var(--text2);
-    padding: 2px 8px; border-radius: 20px; border: 1px solid var(--border);
-  }
+  .item-qty-badge { font-size: 11px; font-weight: 700; background: var(--surface2); color: var(--text2); padding: 2px 8px; border-radius: 20px; border: 1px solid var(--border); }
   .item-total { font-size: 12px; color: var(--text2); }
   .item-link { font-size: 11px; color: var(--accent); text-decoration: none; opacity: 0.7; }
   .item-link:hover { opacity: 1; text-decoration: underline; }
-  .btn-remove {
-    background: none; border: none; cursor: pointer;
-    color: #ccc; font-size: 16px; padding: 2px 4px;
-    border-radius: 6px; transition: color 0.15s, background 0.15s;
-    flex-shrink: 0; line-height: 1; margin-top: 2px;
-  }
+  .btn-remove { background: none; border: none; cursor: pointer; color: #ccc; font-size: 16px; padding: 2px 4px; border-radius: 6px; transition: color 0.15s, background 0.15s; flex-shrink: 0; line-height: 1; margin-top: 2px; }
   .btn-remove:hover { color: #e53935; background: #fff0f0; }
 
-  .color-0 { background: #ff6b35; }
-  .color-1 { background: #4caf7d; }
-  .color-2 { background: #2196f3; }
-  .color-3 { background: #9c27b0; }
-  .color-4 { background: #ff9800; }
-  .color-5 { background: #e91e63; }
-  .color-6 { background: #00bcd4; }
-  .color-7 { background: #795548; }
+  .color-0{background:#ff6b35} .color-1{background:#4caf7d} .color-2{background:#2196f3}
+  .color-3{background:#9c27b0} .color-4{background:#ff9800} .color-5{background:#e91e63}
+  .color-6{background:#00bcd4} .color-7{background:#795548}
 
-  .toast {
-    position: fixed; bottom: 20px; left: 50%;
-    transform: translateX(-50%) translateY(80px);
-    background: #222; color: #fff;
-    padding: 10px 20px; border-radius: 30px;
-    font-size: 13px; font-weight: 600;
-    transition: transform 0.3s cubic-bezier(0.34,1.56,0.64,1);
-    z-index: 999; white-space: nowrap;
-  }
+  .toast { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%) translateY(80px); background: #222; color: #fff; padding: 10px 20px; border-radius: 30px; font-size: 13px; font-weight: 600; transition: transform 0.3s cubic-bezier(0.34,1.56,0.64,1); z-index: 999; white-space: nowrap; }
   .toast.show { transform: translateX(-50%) translateY(0); }
 
-  @media (max-width: 480px) {
-    header h1 { font-size: 22px; }
-    .summary-stats { gap: 12px; }
-    .summary-bar .total { font-size: 22px; }
-  }
+  @media (max-width: 480px) { header h1 { font-size: 22px; } .summary-stats { gap: 12px; } .summary-bar .total { font-size: 22px; } }
 </style>
 </head>
 <body>
@@ -319,14 +150,10 @@
   </div>
 </header>
 
-<!-- SETTINGS MODAL -->
 <div class="modal-overlay" id="settings-modal" onclick="handleOverlayClick(event)">
   <div class="modal">
-    <div class="modal-title">
-      ⚙️ 設定
-      <button class="btn-modal-close" onclick="closeSettings()">✕</button>
-    </div>
-    <div class="modal-label">Gemini API Key</div>
+    <div class="modal-title">⚙️ 設定 <button class="btn-modal-close" onclick="closeSettings()">✕</button></div>
+    <div class="modal-label">Gemini API Key（用作備用）</div>
     <div class="modal-input-row">
       <input type="password" id="api-key-input" placeholder="AIza..." autocomplete="off">
       <button class="btn-modal-save" onclick="saveKey()">儲存</button>
@@ -335,6 +162,7 @@
       <span id="key-saved-msg" class="key-saved-msg"></span>
       <a href="https://aistudio.google.com/app/apikey" target="_blank">免費攞 Key →</a>
     </div>
+    <button id="btn-delete-key" onclick="deleteKey()" style="display:none;margin-top:12px;width:100%;padding:9px;background:none;border:1.5px solid #ffcdd2;border-radius:10px;color:#e53935;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;transition:all 0.15s">🗑️ 刪除 API Key</button>
   </div>
 </div>
 
@@ -365,7 +193,7 @@
     </button>
     <div class="loading-bar" id="loading-bar">
       <div class="spinner"></div>
-      <span id="loading-text">正在搵緊產品資訊...</span>
+      <span id="loading-text">正在抓取產品資訊...</span>
     </div>
     <div class="error-msg" id="error-msg"></div>
   </div>
@@ -376,15 +204,9 @@
       <div class="total" id="total-amount">HK$0</div>
     </div>
     <div class="summary-stats">
-      <div class="stat">
-        <div class="val" id="stat-items">0</div>
-        <div class="lbl">件產品</div>
-      </div>
+      <div class="stat"><div class="val" id="stat-items">0</div><div class="lbl">件產品</div></div>
       <div class="divider-v"></div>
-      <div class="stat">
-        <div class="val" id="stat-people">0</div>
-        <div class="lbl">位同事</div>
-      </div>
+      <div class="stat"><div class="val" id="stat-people">0</div><div class="lbl">位同事</div></div>
     </div>
   </div>
 
@@ -409,15 +231,18 @@
 <div class="toast" id="toast"></div>
 
 <script>
-// ── SUPABASE ──
 const SUPABASE_URL = 'https://tlmkopdfrhgndkjqrbhv.supabase.co';
 const SUPABASE_KEY = 'sb_publishable_a0cbx2oNEfR3uiFVG7vvIw_AjbVaYZx';
 const TABLE = 'drink_orders';
 const db = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
-let orders = [];
-let qty = 1;
-let pollInterval = null;
+// Multiple CORS proxies — try in order if one fails
+const PROXIES = [
+  url => `https://corsproxy.io/?${encodeURIComponent(url)}`,
+  url => `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`,
+];
+
+let orders = [], qty = 1;
 
 // ── QTY ──
 function changeQty(delta) {
@@ -431,19 +256,25 @@ function openSettings() {
   const key = getKey();
   if (key) document.getElementById('api-key-input').value = key;
   document.getElementById('key-saved-msg').textContent = key ? '✅ 已設定' : '';
+  document.getElementById('btn-delete-key').style.display = key ? 'block' : 'none';
 }
-function closeSettings() {
-  document.getElementById('settings-modal').className = 'modal-overlay';
-}
-function handleOverlayClick(e) {
-  if (e.target === document.getElementById('settings-modal')) closeSettings();
-}
+function closeSettings() { document.getElementById('settings-modal').className = 'modal-overlay'; }
+function handleOverlayClick(e) { if (e.target === document.getElementById('settings-modal')) closeSettings(); }
 function saveKey() {
   const key = document.getElementById('api-key-input').value.trim();
   if (!key) return;
   localStorage.setItem('gemini_key', key);
   updateKeyIndicator();
   document.getElementById('key-saved-msg').textContent = '✅ 已儲存！';
+  document.getElementById('btn-delete-key').style.display = 'block';
+  setTimeout(closeSettings, 800);
+}
+function deleteKey() {
+  localStorage.removeItem('gemini_key');
+  document.getElementById('api-key-input').value = '';
+  document.getElementById('key-saved-msg').textContent = '🗑️ 已刪除';
+  document.getElementById('btn-delete-key').style.display = 'none';
+  updateKeyIndicator();
   setTimeout(closeSettings, 800);
 }
 function getKey() { return localStorage.getItem('gemini_key') || ''; }
@@ -455,49 +286,164 @@ function updateKeyIndicator() {
 
 // ── LOAD ──
 async function loadOrders() {
-  const { data, error } = await db
-    .from(TABLE).select('*').order('created_at', { ascending: true });
+  const { data, error } = await db.from(TABLE).select('*').order('created_at', { ascending: true });
   if (error) { console.error(error); return; }
   orders = data || [];
   render();
 }
 
-// ── REALTIME + POLLING FALLBACK ──
-// Realtime requires table replication enabled in Supabase dashboard
-// Polling every 8s acts as a reliable fallback
+// ── SYNC ──
 function startSync() {
-  // Try realtime
   db.channel('drink_orders_ch')
-    .on('postgres_changes', { event: '*', schema: 'public', table: TABLE }, () => {
-      loadOrders();
-    })
-    .subscribe((status) => {
-      if (status === 'SUBSCRIBED') {
-        // Realtime working — still keep light polling as safety net
-        if (pollInterval) clearInterval(pollInterval);
-        pollInterval = setInterval(loadOrders, 15000);
-      }
-    });
-
-  // Polling fallback (kicks in immediately, works even without realtime)
-  pollInterval = setInterval(loadOrders, 8000);
+    .on('postgres_changes', { event: '*', schema: 'public', table: TABLE }, () => loadOrders())
+    .subscribe();
+  setInterval(loadOrders, 10000); // polling fallback
 }
 
-// ── FETCH og:image FROM HKTVMALL ──
-async function fetchOgImage(url) {
-  try {
-    // Use a CORS proxy to fetch the product page
-    const proxyUrl = `https://corsproxy.io/?${encodeURIComponent(url)}`;
-    const res = await fetch(proxyUrl, { signal: AbortSignal.timeout(6000) });
-    if (!res.ok) return '';
-    const html = await res.text();
-    // Extract og:image
-    const match = html.match(/<meta[^>]+property=["']og:image["'][^>]+content=["']([^"']+)["']/i)
-                || html.match(/<meta[^>]+content=["']([^"']+)["'][^>]+property=["']og:image["']/i);
-    return match ? match[1] : '';
-  } catch {
-    return '';
+// ══════════════════════════════════════════
+//  SCRAPE HKTVMALL PAGE DIRECTLY
+//  Priority: JSON-LD → og meta tags → Gemini fallback
+// ══════════════════════════════════════════
+async function fetchPageHtml(url) {
+  for (const makeProxy of PROXIES) {
+    try {
+      const res = await fetch(makeProxy(url), { signal: AbortSignal.timeout(8000) });
+      if (res.ok) return await res.text();
+    } catch {}
   }
+  return null;
+}
+
+function parseProductFromHtml(html) {
+  const result = { name: '', price: 0, image: '', brand: '', unit: '' };
+
+  // 1. Try JSON-LD (most accurate)
+  const ldMatches = html.matchAll(/<script[^>]+type=["']application\/ld\+json["'][^>]*>([\s\S]*?)<\/script>/gi);
+  for (const m of ldMatches) {
+    try {
+      const json = JSON.parse(m[1]);
+      const items = Array.isArray(json) ? json : [json];
+      for (const item of items) {
+        const prod = item['@type'] === 'Product' ? item
+                   : item['@graph']?.find(x => x['@type'] === 'Product');
+        if (!prod) continue;
+
+        if (prod.name) result.name = prod.name;
+        if (prod.brand?.name) result.brand = prod.brand.name;
+        if (prod.image) result.image = Array.isArray(prod.image) ? prod.image[0] : prod.image;
+
+        // Price from offers
+        const offers = prod.offers;
+        if (offers) {
+          const offer = Array.isArray(offers) ? offers[0] : offers;
+          const p = parseFloat(offer.price || offer.lowPrice || 0);
+          if (p > 0) result.price = p;
+        }
+        if (result.name && result.price > 0) return result; // got enough
+      }
+    } catch {}
+  }
+
+  // 2. Fallback: og meta tags
+  const ogTitle = html.match(/<meta[^>]+property=["']og:title["'][^>]+content=["']([^"']+)["']/i)
+               || html.match(/<meta[^>]+content=["']([^"']+)["'][^>]+property=["']og:title["']/i);
+  if (ogTitle && !result.name) result.name = ogTitle[1].replace(/\s*[-|].*$/, '').trim();
+
+  const ogImage = html.match(/<meta[^>]+property=["']og:image["'][^>]+content=["']([^"']+)["']/i)
+                || html.match(/<meta[^>]+content=["']([^"']+)["'][^>]+property=["']og:image["']/i);
+  if (ogImage && !result.image) result.image = ogImage[1];
+
+  // 3. Try extracting price from page text patterns like "HK$175.40" or "$175.40"
+  if (result.price === 0) {
+    // Look for price near sale/current price indicators
+    const pricePatterns = [
+      /itemprop=["']price["'][^>]*content=["']([0-9]+\.?[0-9]*)["']/i,
+      /"price"\s*:\s*"?([0-9]+\.?[0-9]*)"?/,
+      /HK\$\s*([0-9]+\.[0-9]{2})/,
+    ];
+    for (const pat of pricePatterns) {
+      const m = html.match(pat);
+      if (m) {
+        const p = parseFloat(m[1]);
+        if (p > 0) { result.price = p; break; }
+      }
+    }
+  }
+
+  return result;
+}
+
+// ── GEMINI FALLBACK (only if scraping gives incomplete data) ──
+async function enrichWithGemini(url, partial) {
+  const key = getKey();
+  if (!key) return partial; // no key, return whatever we have
+
+  const missing = [];
+  if (!partial.name) missing.push('name (產品名稱)');
+  if (!partial.price) missing.push('price (HKD售價，數字)');
+  if (!partial.image) missing.push('image (圖片URL)');
+  if (missing.length === 0) return partial;
+
+  const prompt = `HKTVmall 產品頁面：${url}
+
+我已知以下部分資訊（空白代表未知）：
+名稱: ${partial.name || '未知'}
+價格: ${partial.price || '未知'}
+圖片: ${partial.image || '未知'}
+
+請用 Google Search 搵以下缺少的資訊：${missing.join(', ')}
+只回覆 JSON，不要任何其他文字：
+{"name":"${partial.name || '產品名稱'}","price":${partial.price || 0},"unit":"件或盒等","image":"${partial.image || ''}","brand":"${partial.brand || ''}"}`;
+
+  try {
+    const res = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${key}`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          tools: [{ google_search: {} }],
+          contents: [{ role: 'user', parts: [{ text: prompt }] }],
+          generationConfig: { temperature: 0.1, maxOutputTokens: 500 }
+        })
+      }
+    );
+    if (!res.ok) return partial;
+    const data = await res.json();
+    const text = data.candidates?.[0]?.content?.parts?.filter(p => p.text)?.map(p => p.text)?.join('') || '';
+    const m = text.match(/\{[\s\S]*?\}/);
+    if (!m) return partial;
+    const gemini = JSON.parse(m[0].replace(/```json|```/g, '').trim());
+    // Only fill in what's missing from scrape
+    return {
+      name:  partial.name  || gemini.name  || '',
+      price: partial.price || gemini.price || 0,
+      image: partial.image || gemini.image || '',
+      brand: partial.brand || gemini.brand || '',
+      unit:  partial.unit  || gemini.unit  || '',
+    };
+  } catch { return partial; }
+}
+
+// ── MAIN FETCH FUNCTION ──
+async function fetchProductInfo(url) {
+  setLoadingText('正在抓取產品頁面...');
+  const html = await fetchPageHtml(url);
+
+  let product = { name: '', price: 0, image: '', brand: '', unit: '' };
+
+  if (html) {
+    product = parseProductFromHtml(html);
+  }
+
+  // If scraping got incomplete info, try Gemini to fill gaps
+  if (!product.name || !product.price) {
+    setLoadingText('補充產品資訊中...');
+    product = await enrichWithGemini(url, product);
+  }
+
+  if (!product.name) throw new Error('未能取得產品資訊，請確認連結正確');
+  return product;
 }
 
 // ── ADD ORDER ──
@@ -510,25 +456,14 @@ async function addOrder() {
   if (!url)  return showError('請貼上 HKTVmall 產品連結 🔗');
   if (!url.includes('hktvmall')) return showError('請貼上正確嘅 HKTVmall 連結');
 
-  setLoading(true, '正在搵緊產品資訊...');
+  setLoading(true);
   try {
-    // Fetch product info + image in parallel
-    const [product, ogImage] = await Promise.all([
-      fetchProductInfo(url),
-      fetchOgImage(url)
-    ]);
-
-    // Use og:image if Gemini didn't find one
-    if (!product.image && ogImage) product.image = ogImage;
-
+    const product = await fetchProductInfo(url);
     const { error } = await db.from(TABLE).insert({ person_name: name, product, qty, url });
     if (error) throw new Error('儲存失敗：' + error.message);
-
     document.getElementById('url-input').value = '';
-    qty = 1;
-    document.getElementById('qty-input').value = 1;
+    qty = 1; document.getElementById('qty-input').value = 1;
     showToast('✅ 已加落單！');
-    // Immediately reload so user sees their own entry
     await loadOrders();
   } catch(e) {
     showError(e.message);
@@ -537,58 +472,10 @@ async function addOrder() {
   }
 }
 
-// ── REMOVE ──
-async function removeOrder(id) {
-  await db.from(TABLE).delete().eq('id', id);
-  await loadOrders();
-}
-
-// ── CLEAR ALL ──
+async function removeOrder(id) { await db.from(TABLE).delete().eq('id', id); await loadOrders(); }
 async function clearAll() {
   if (!confirm('確定清除所有落單紀錄？')) return;
-  await db.from(TABLE).delete().neq('id', 0);
-  await loadOrders();
-}
-
-// ── FETCH PRODUCT VIA GEMINI 2.5 FLASH ──
-async function fetchProductInfo(url) {
-  const key = getKey();
-  if (!key) { openSettings(); throw new Error('請先喺右上角 ⚙️ 設定 Gemini API Key'); }
-
-  const prompt = `請幫我查詢以下 HKTVmall 產品連結的資訊：
-${url}
-
-用 Google Search 搵到以下資訊，然後只回覆一個 JSON object，不要有任何其他文字、解釋或 markdown backtick：
-{"name":"產品中文或英文名稱（完整名稱）","price":數字價錢只要數字,"unit":"件或盒或包或支等單位","image":"產品圖片URL如搵唔到就空字串","brand":"品牌名稱如有"}
-price 搵唔到就用 0，image 搵唔到就用空字串。`;
-
-  const res = await fetch(
-    `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${key}`,
-    {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        tools: [{ google_search: {} }],
-        contents: [{ role: 'user', parts: [{ text: prompt }] }],
-        generationConfig: { temperature: 0.1, maxOutputTokens: 1000 }
-      })
-    }
-  );
-
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({}));
-    const msg = err.error?.message || `API error ${res.status}`;
-    if (res.status === 400) throw new Error('API Key 無效，請重新設定');
-    if (res.status === 429) throw new Error('超過 API 使用限額，請稍後再試');
-    throw new Error(msg);
-  }
-
-  const data = await res.json();
-  const fullText = data.candidates?.[0]?.content?.parts
-    ?.filter(p => p.text)?.map(p => p.text)?.join('') || '';
-  const jsonMatch = fullText.match(/\{[\s\S]*?\}/);
-  if (!jsonMatch) throw new Error('未能解析產品資訊，請重試');
-  return JSON.parse(jsonMatch[0].replace(/```json|```/g, '').trim());
+  await db.from(TABLE).delete().neq('id', 0); await loadOrders();
 }
 
 // ── RENDER ──
@@ -601,23 +488,14 @@ function render() {
   const summaryBar = document.getElementById('summary-bar');
 
   if (orders.length === 0) {
-    emptyState.style.display = 'block';
-    ordersSection.style.display = 'none';
-    summaryBar.style.display = 'none';
-    return;
+    emptyState.style.display = 'block'; ordersSection.style.display = 'none'; summaryBar.style.display = 'none'; return;
   }
-  emptyState.style.display = 'none';
-  ordersSection.style.display = 'block';
-  summaryBar.style.display = 'flex';
+  emptyState.style.display = 'none'; ordersSection.style.display = 'block'; summaryBar.style.display = 'flex';
 
   const byPerson = {}, personOrder = [], personIndex = {};
   let colorIdx = 0;
   for (const o of orders) {
-    if (!byPerson[o.person_name]) {
-      byPerson[o.person_name] = [];
-      personOrder.push(o.person_name);
-      personIndex[o.person_name] = colorIdx++ % COLORS.length;
-    }
+    if (!byPerson[o.person_name]) { byPerson[o.person_name] = []; personOrder.push(o.person_name); personIndex[o.person_name] = colorIdx++ % COLORS.length; }
     byPerson[o.person_name].push(o);
   }
 
@@ -631,17 +509,15 @@ function render() {
   for (const person of personOrder) {
     const pOrders = byPerson[person];
     const subtotal = pOrders.reduce((s, o) => s + (o.product.price || 0) * o.qty, 0);
-    const colorClass = COLORS[personIndex[person]];
     const group = document.createElement('div');
     group.className = 'person-group';
     group.innerHTML = `
       <div class="person-header">
-        <div class="avatar ${colorClass}">${escHtml(person.charAt(0).toUpperCase())}</div>
+        <div class="avatar ${COLORS[personIndex[person]]}">${escHtml(person.charAt(0).toUpperCase())}</div>
         <div class="person-name">${escHtml(person)}</div>
         <div class="person-subtotal">HK$${subtotal.toFixed(1)}</div>
       </div>
-      ${pOrders.map(renderItem).join('')}
-    `;
+      ${pOrders.map(renderItem).join('')}`;
     container.appendChild(group);
   }
 }
@@ -650,9 +526,7 @@ function renderItem(o) {
   const p = o.product;
   const lineTotal = (p.price || 0) * o.qty;
   const imgHtml = p.image
-    ? `<img class="item-img" src="${escHtml(p.image)}" alt=""
-        onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">
-       <div class="img-placeholder" style="display:none">🧃</div>`
+    ? `<img class="item-img" src="${escHtml(p.image)}" alt="" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'"><div class="img-placeholder" style="display:none">🧃</div>`
     : `<div class="img-placeholder">🧃</div>`;
   return `
     <div class="item-card">
@@ -670,56 +544,41 @@ function renderItem(o) {
         </div>
       </div>
       <button class="btn-remove" onclick="removeOrder(${o.id})" title="移除">✕</button>
-    </div>
-  `;
+    </div>`;
 }
 
-// ── COPY LIST ──
 function copyList() {
   const byPerson = {}, personOrder = [];
   for (const o of orders) {
     if (!byPerson[o.person_name]) { byPerson[o.person_name] = []; personOrder.push(o.person_name); }
     byPerson[o.person_name].push(o);
   }
-  let text = '🧃 飲品團購清單\n━━━━━━━━━━━━━━━━━━━━\n';
-  let grand = 0;
+  let text = '🧃 飲品團購清單\n━━━━━━━━━━━━━━━━━━━━\n', grand = 0;
   for (const person of personOrder) {
     text += `\n👤 ${person}\n`;
     for (const o of byPerson[person]) {
-      const line = (o.product.price || 0) * o.qty;
-      grand += line;
+      const line = (o.product.price || 0) * o.qty; grand += line;
       text += `  • ${o.product.name || '未知產品'} × ${o.qty}`;
       if (o.product.price) text += ` (HK$${line.toFixed(1)})`;
       text += '\n';
     }
-    const sub = byPerson[person].reduce((s, o) => s + (o.product.price || 0) * o.qty, 0);
-    text += `  小計：HK$${sub.toFixed(1)}\n`;
+    text += `  小計：HK$${byPerson[person].reduce((s,o) => s+(o.product.price||0)*o.qty,0).toFixed(1)}\n`;
   }
   text += `\n━━━━━━━━━━━━━━━━━━━━\n💰 總計：HK$${grand.toFixed(1)}\n`;
   navigator.clipboard.writeText(text).then(() => showToast('📋 已複製到剪貼板！'));
 }
 
-// ── HELPERS ──
-function setLoading(on, msg) {
+function setLoading(on) {
   document.getElementById('add-btn').disabled = on;
   document.getElementById('btn-text').textContent = on ? '搜尋緊...' : '🔍 搵產品資訊 & 加落單';
   document.getElementById('loading-bar').className = 'loading-bar' + (on ? ' show' : '');
-  if (msg) document.getElementById('loading-text').textContent = msg;
+  if (!on) document.getElementById('loading-text').textContent = '正在抓取產品資訊...';
 }
-function showError(msg) {
-  const el = document.getElementById('error-msg');
-  el.innerHTML = '⚠️ ' + msg; el.className = 'error-msg show';
-}
-function showToast(msg) {
-  const t = document.getElementById('toast');
-  t.textContent = msg; t.className = 'toast show';
-  setTimeout(() => t.className = 'toast', 2500);
-}
-function escHtml(s) {
-  return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
-}
+function setLoadingText(t) { document.getElementById('loading-text').textContent = t; }
+function showError(msg) { const el = document.getElementById('error-msg'); el.innerHTML = '⚠️ ' + msg; el.className = 'error-msg show'; }
+function showToast(msg) { const t = document.getElementById('toast'); t.textContent = msg; t.className = 'toast show'; setTimeout(() => t.className = 'toast', 2500); }
+function escHtml(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
 
-// ── INIT ──
 document.addEventListener('DOMContentLoaded', () => {
   document.getElementById('url-input').addEventListener('keydown', e => { if (e.key === 'Enter') addOrder(); });
   document.getElementById('api-key-input').addEventListener('keydown', e => { if (e.key === 'Enter') saveKey(); });
