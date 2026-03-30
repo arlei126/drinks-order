@@ -257,7 +257,7 @@
     <div class="card-title"><span>➕</span> 加落單</div>
     <div class="form-row stacked">
       <label for="name-input">你的名字</label>
-      <input type="text" id="name-input" placeholder="例：阿明、Tracy..." maxlength="20">
+      <input type="text" id="name-input" placeholder="" maxlength="20">
     </div>
     <div class="form-row stacked" style="margin-top:10px">
       <label for="url-input">HKTVmall 產品連結</label>
@@ -429,9 +429,14 @@ function parseProductFromHtml(html) {
         if (prod.image) result.image = Array.isArray(prod.image) ? prod.image[0] : prod.image;
         const offers = prod.offers;
         if (offers) {
-          const offer = Array.isArray(offers) ? offers[0] : offers;
-          const p = parseFloat(offer.price || offer.lowPrice || 0);
-          if (p > 0) result.price = p;
+          const offerList = Array.isArray(offers) ? offers : [offers];
+          // Prefer highPrice (bundle/box price) over single-unit price
+          let best = 0;
+          for (const offer of offerList) {
+            const p = parseFloat(offer.highPrice || offer.price || offer.lowPrice || 0);
+            if (p > best) best = p;
+          }
+          if (best > 0) result.price = best;
         }
         if (result.name && result.price > 0) return result;
       }
@@ -737,6 +742,16 @@ function showToast(msg){const t=document.getElementById('toast');t.textContent=m
 function escHtml(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
 
 document.addEventListener('DOMContentLoaded', () => {
+  // Restore saved name
+  const savedName = localStorage.getItem('user_name') || '';
+  if (savedName) document.getElementById('name-input').value = savedName;
+
+  // Save name on change
+  document.getElementById('name-input').addEventListener('input', () => {
+    const val = document.getElementById('name-input').value.trim();
+    if (val) localStorage.setItem('user_name', val);
+  });
+
   document.getElementById('url-input').addEventListener('keydown', e=>{if(e.key==='Enter')addOrder();});
   document.getElementById('api-key-input').addEventListener('keydown', e=>{if(e.key==='Enter')saveKey();});
   document.getElementById('archive-name-input').addEventListener('keydown', e=>{if(e.key==='Enter')saveArchive();});
