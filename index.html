@@ -405,35 +405,29 @@ function startSync() {
 
 // ── SCRAPE HKTVMALL ──
 async function fetchPageHtml(url) {
-  // Normalise short mobile links: /p/XXXX → try to resolve via allorigins which returns final URL
   for (const makeProxy of PROXIES) {
     try {
       const res = await fetch(makeProxy(url), { signal: AbortSignal.timeout(8000) });
       if (!res.ok) continue;
       const html = await res.text();
 
-      // If we got a redirect / empty page (no JSON-LD, no og:title), try to extract redirect target
-      if (!html.includes('application/ld+json') && !html.includes('og:title')) {
-        // Look for meta-refresh or canonical redirect
+      if (!html.includes('application/ld+json') && !html.includes('og:title') && !html.includes('data-price')) {
         const canon = html.match(/<link[^>]+rel=["']canonical["'][^>]+href=["']([^"']+)["']/i)
                    || html.match(/<meta[^>]+http-equiv=["']refresh["'][^>]+content=["'][^"']*url=([^"'\s]+)/i);
         if (canon && canon[1] && canon[1] !== url) {
-          // Recurse once with the resolved URL
           return await fetchPageHtml(canon[1]);
         }
-        // Try fetching the URL with allorigins which returns JSON with contents + final_url
         try {
           const aoRes = await fetch(`https://api.allorigins.win/get?url=${encodeURIComponent(url)}`, { signal: AbortSignal.timeout(8000) });
           if (aoRes.ok) {
             const aoData = await aoRes.json();
-            if (aoData.contents && aoData.contents.includes('application/ld+json')) return aoData.contents;
-            // If allorigins gives us a final URL different from input, fetch that
+            if (aoData.contents && (aoData.contents.includes('application/ld+json') || aoData.contents.includes('data-price'))) return aoData.contents;
             if (aoData.status?.url && aoData.status.url !== url) {
               return await fetchPageHtml(aoData.status.url);
             }
           }
         } catch {}
-        continue; // this proxy gave junk, try next
+        continue;
       }
       return html;
     } catch {}
@@ -443,6 +437,18 @@ async function fetchPageHtml(url) {
 
 function parseProductFromHtml(html) {
   const result = { name: '', price: 0, image: '', brand: '', unit: '' };
+
+  // ── NEW: HKTVmall data-attribute parsing (最可靠) ──
+  const dataPrice = html.match(/data-price=["']\$?\s*([0-9]+\.?[0-9]*)["']/i);
+  if (dataPrice) { const p = parseFloat(dataPrice[1]); if (p > 0) result.price = p; }
+
+  const dataBrand = html.match(/data-tBrand=["']([^"']+)["']/i);
+  if (dataBrand) result.brand = dataBrand[1];
+
+  const dataName = html.match(/data-tName=["']([^"']+)["']/i);
+  if (dataName) result.name = dataName[1];
+  // ── END NEW ──
+
   const ldMatches = [...html.matchAll(/<script[^>]+type=["']application\/ld\+json["'][^>]*>([\s\S]*?)<\/script>/gi)];
   for (const m of ldMatches) {
     try {
@@ -457,7 +463,6 @@ function parseProductFromHtml(html) {
         const offers = prod.offers;
         if (offers) {
           const offerList = Array.isArray(offers) ? offers : [offers];
-          // Take the lowest price across all offers
           let best = Infinity;
           for (const offer of offerList) {
             const p = parseFloat(offer.lowPrice || offer.price || offer.highPrice || 0);
@@ -470,12 +475,21 @@ function parseProductFromHtml(html) {
       }
     } catch {}
   }
+
   const ogTitle = html.match(/<meta[^>]+property=["']og:title["'][^>]+content=["']([^"']+)["']/i) || html.match(/<meta[^>]+content=["']([^"']+)["'][^>]+property=["']og:title["']/i);
   if (ogTitle && !result.name) result.name = ogTitle[1].replace(/\s*[-|].*$/, '').trim();
   const ogImage = html.match(/<meta[^>]+property=["']og:image["'][^>]+content=["']([^"']+)["']/i) || html.match(/<meta[^>]+content=["']([^"']+)["'][^>]+property=["']og:image["']/i);
   if (ogImage && !result.image) result.image = ogImage[1];
+
   if (result.price === 0) {
-    for (const pat of [/itemprop=["']price["'][^>]*content=["']([0-9]+\.?[0-9]*)["']/i, /"price"\s*:\s*"?([0-9]+\.?[0-9]*)"?/, /HK\$\s*([0-9]+\.[0-9]{2})/]) {
+    for (const pat of [
+      /itemprop=["']price["'][^>]*content=["']([0-9]+\.?[0-9]*)["']/i,
+      /"price"\s*:\s*"?([0-9]+\.?[0-9]*)"?/,
+      /HK\$\s*([0-9]+\.[0-9]{2})/,
+      /data-price=["']\$?\s*([0-9]+\.?[0-9]*)["']/i,
+      /"value"\s*:\s*"?([0-9]+\.?[0-9]*)"?\s*,\s*"priceType"/,
+      /"formattedValue"\s*:\s*"\$\s*([0-9]+\.?[0-9]*)"/
+    ]) {
       const m = html.match(pat);
       if (m) { const p = parseFloat(m[1]); if (p > 0) { result.price = p; break; } }
     }
@@ -531,7 +545,6 @@ async function addOrder() {
   setLoading(true);
   try {
     const product = await fetchProductInfo(url);
-    // Check if same person already has this exact URL — merge qty instead of new row
     const existing = orders.find(o => o.person_name === name && o.url === url);
     if (existing) {
       const newQty = existing.qty + qty;
@@ -585,7 +598,6 @@ function openArchiveModal() {
   const people = [...new Set(orders.map(o => o.person_name))];
   document.getElementById('archive-preview').innerHTML =
     `<strong>${people.join('、')}</strong> 共 ${orders.length} 件產品，總額 <strong>HK$${grandTotal.toFixed(1)}</strong>`;
-  // Default name = current month
   const now = new Date();
   document.getElementById('archive-name-input').value =
     `${now.getFullYear()}年${now.getMonth()+1}月`;
@@ -779,11 +791,9 @@ function showToast(msg){const t=document.getElementById('toast');t.textContent=m
 function escHtml(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
 
 document.addEventListener('DOMContentLoaded', () => {
-  // Restore saved name
   const savedName = localStorage.getItem('user_name') || '';
   if (savedName) document.getElementById('name-input').value = savedName;
 
-  // Save name on change
   document.getElementById('name-input').addEventListener('input', () => {
     const val = document.getElementById('name-input').value.trim();
     if (val) localStorage.setItem('user_name', val);
