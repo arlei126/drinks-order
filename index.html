@@ -404,10 +404,33 @@ function startSync() {
 }
 
 // ── SCRAPE HKTVMALL ──
+function fetchWithTimeout(url, ms = 12000) {
+  const ctrl = new AbortController();
+  const timer = setTimeout(() => ctrl.abort(), ms);
+  return fetch(url, { signal: ctrl.signal }).finally(() => clearTimeout(timer));
+}
+
 async function fetchPageHtml(url) {
+  // 短連結 (/p/XXXX) → 先用 allorigins 解析 redirect 攞到完整 URL
+  if (url.match(/hktvmall\.com\/p\/[A-Za-z0-9_]+\/?$/)) {
+    try {
+      setLoadingText('解析短連結中...');
+      const aoRes = await fetchWithTimeout(`https://api.allorigins.win/get?url=${encodeURIComponent(url)}`, 15000);
+      if (aoRes.ok) {
+        const aoData = await aoRes.json();
+        if (aoData.contents && (aoData.contents.includes('application/ld+json') || aoData.contents.includes('data-price'))) {
+          return aoData.contents;
+        }
+        if (aoData.status?.url && aoData.status.url !== url) {
+          url = aoData.status.url;
+        }
+      }
+    } catch {}
+  }
+
   for (const makeProxy of PROXIES) {
     try {
-      const res = await fetch(makeProxy(url), { signal: AbortSignal.timeout(8000) });
+      const res = await fetchWithTimeout(makeProxy(url), 12000);
       if (!res.ok) continue;
       const html = await res.text();
 
@@ -418,7 +441,7 @@ async function fetchPageHtml(url) {
           return await fetchPageHtml(canon[1]);
         }
         try {
-          const aoRes = await fetch(`https://api.allorigins.win/get?url=${encodeURIComponent(url)}`, { signal: AbortSignal.timeout(8000) });
+          const aoRes = await fetchWithTimeout(`https://api.allorigins.win/get?url=${encodeURIComponent(url)}`, 12000);
           if (aoRes.ok) {
             const aoData = await aoRes.json();
             if (aoData.contents && (aoData.contents.includes('application/ld+json') || aoData.contents.includes('data-price'))) return aoData.contents;
