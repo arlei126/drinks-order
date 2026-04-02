@@ -437,11 +437,11 @@ async function fetchPageHtml(url) {
 
 function parseProductFromHtml(html) {
   const result = { name: '', price: 0, image: '', brand: '', unit: '' };
-  const allPrices = []; // 收集所有搵到嘅價錢，最後揀最平
 
   // ── HKTVmall data-attribute parsing ──
+  let salePrice = 0;
   const dataPrice = html.match(/data-price=["']\$?\s*([0-9]+\.?[0-9]*)["']/i);
-  if (dataPrice) { const p = parseFloat(dataPrice[1]); if (p > 0) allPrices.push(p); }
+  if (dataPrice) salePrice = parseFloat(dataPrice[1]) || 0;
 
   const dataBrand = html.match(/data-tBrand=["']([^"']+)["']/i);
   if (dataBrand) result.brand = dataBrand[1];
@@ -449,7 +449,8 @@ function parseProductFromHtml(html) {
   const dataName = html.match(/data-tName=["']([^"']+)["']/i);
   if (dataName) result.name = dataName[1];
 
-  // ── JSON-LD parsing（攞 name / image / price） ──
+  // ── JSON-LD parsing（攞 name / image / brand，同 fallback 價錢） ──
+  let ldPrice = 0;
   const ldMatches = [...html.matchAll(/<script[^>]+type=["']application\/ld\+json["'][^>]*>([\s\S]*?)<\/script>/gi)];
   for (const m of ldMatches) {
     try {
@@ -464,25 +465,28 @@ function parseProductFromHtml(html) {
         if (prod.offers) {
           const offerList = Array.isArray(prod.offers) ? prod.offers : [prod.offers];
           for (const offer of offerList) {
-            for (const k of ['lowPrice','price','highPrice']) {
-              const p = parseFloat(offer[k] || 0);
-              if (p > 0) allPrices.push(p);
-            }
+            const p = parseFloat(offer.lowPrice || offer.price || offer.highPrice || 0);
+            if (p > 0 && (ldPrice === 0 || p < ldPrice)) ldPrice = p;
           }
         }
       }
     } catch {}
   }
 
-  // ── Inline JSON price patterns（搵 HKTVplus 至抵價等）──
-  const valuePrices = [...html.matchAll(/"value"\s*:\s*"?([0-9]+\.?[0-9]*)"?\s*,\s*"(?:price|currency|formattedValue|priceType)/gi)];
-  for (const m of valuePrices) { const p = parseFloat(m[1]); if (p > 0) allPrices.push(p); }
-
-  const formattedPrices = [...html.matchAll(/"formattedValue"\s*:\s*"\$\s*([0-9]+\.?[0-9]*)"/gi)];
-  for (const m of formattedPrices) { const p = parseFloat(m[1]); if (p > 0) allPrices.push(p); }
-
-  const jsonPrices = [...html.matchAll(/"price"\s*:\s*"?([0-9]+\.?[0-9]*)"?\s*[,}]/gi)];
-  for (const m of jsonPrices) { const p = parseFloat(m[1]); if (p > 0) allPrices.push(p); }
+  // ── 搵 HKTVplus / 會員至抵價 ──
+  // 用第一個 "price":NUMBER match — 通常係產品本身嘅至抵價
+  // 但要確認佢低過 data-price 同唔會離譜地細（>= 基準價40%）
+  let memberPrice = 0;
+  const anchor = salePrice || ldPrice;
+  if (anchor > 0) {
+    const firstPriceMatch = html.match(/"price"\s*:\s*"?([0-9]+\.?[0-9]*)"?\s*[,}]/i);
+    if (firstPriceMatch) {
+      const p = parseFloat(firstPriceMatch[1]);
+      if (p > 0 && p < anchor && p >= anchor * 0.4) {
+        memberPrice = p;
+      }
+    }
+  }
 
   // ── og:meta ──
   const ogTitle = html.match(/<meta[^>]+property=["']og:title["'][^>]+content=["']([^"']+)["']/i) || html.match(/<meta[^>]+content=["']([^"']+)["'][^>]+property=["']og:title["']/i);
@@ -490,10 +494,23 @@ function parseProductFromHtml(html) {
   const ogImage = html.match(/<meta[^>]+property=["']og:image["'][^>]+content=["']([^"']+)["']/i) || html.match(/<meta[^>]+content=["']([^"']+)["'][^>]+property=["']og:image["']/i);
   if (ogImage && !result.image) result.image = ogImage[1];
 
-  // ── 揀最平嘅價錢（過濾太細嘅雜訊，例如運費）──
-  if (allPrices.length > 0) {
-    const reasonable = allPrices.filter(p => p >= 10);
-    result.price = reasonable.length > 0 ? Math.min(...reasonable) : Math.min(...allPrices);
+  // ── 揀價錢：會員價 > 特價 > JSON-LD > fallback ──
+  if (memberPrice > 0) {
+    result.price = memberPrice;
+  } else if (salePrice > 0) {
+    result.price = salePrice;
+  } else if (ldPrice > 0) {
+    result.price = ldPrice;
+  } else {
+    // 最後 fallback
+    for (const pat of [
+      /itemprop=["']price["'][^>]*content=["']([0-9]+\.?[0-9]*)["']/i,
+      /data-price=["']\$?\s*([0-9]+\.?[0-9]*)["']/i,
+      /"formattedValue"\s*:\s*"\$\s*([0-9]+\.?[0-9]*)"/
+    ]) {
+      const m = html.match(pat);
+      if (m) { const p = parseFloat(m[1]); if (p > 0) { result.price = p; break; } }
+    }
   }
 
   return result;
