@@ -437,18 +437,19 @@ async function fetchPageHtml(url) {
 
 function parseProductFromHtml(html) {
   const result = { name: '', price: 0, image: '', brand: '', unit: '' };
+  let dataPriceFound = 0;
 
-  // ── NEW: HKTVmall data-attribute parsing (最可靠) ──
+  // ── HKTVmall data-attribute parsing (最可靠，優先級最高) ──
   const dataPrice = html.match(/data-price=["']\$?\s*([0-9]+\.?[0-9]*)["']/i);
-  if (dataPrice) { const p = parseFloat(dataPrice[1]); if (p > 0) result.price = p; }
+  if (dataPrice) { const p = parseFloat(dataPrice[1]); if (p > 0) dataPriceFound = p; }
 
   const dataBrand = html.match(/data-tBrand=["']([^"']+)["']/i);
   if (dataBrand) result.brand = dataBrand[1];
 
   const dataName = html.match(/data-tName=["']([^"']+)["']/i);
   if (dataName) result.name = dataName[1];
-  // ── END NEW ──
 
+  // ── JSON-LD parsing（攞 name / image，price 只喺冇 data-price 時先用） ──
   const ldMatches = [...html.matchAll(/<script[^>]+type=["']application\/ld\+json["'][^>]*>([\s\S]*?)<\/script>/gi)];
   for (const m of ldMatches) {
     try {
@@ -458,37 +459,37 @@ function parseProductFromHtml(html) {
         const prod = item['@type'] === 'Product' ? item : item['@graph']?.find(x => x['@type'] === 'Product');
         if (!prod) continue;
         if (prod.name) result.name = prod.name;
-        if (prod.brand?.name) result.brand = prod.brand.name;
+        if (prod.brand?.name && !result.brand) result.brand = prod.brand.name;
         if (prod.image) result.image = Array.isArray(prod.image) ? prod.image[0] : prod.image;
-        const offers = prod.offers;
-        if (offers) {
-          const offerList = Array.isArray(offers) ? offers : [offers];
+        // 只喺冇 data-price 時先用 JSON-LD 嘅價錢
+        if (!dataPriceFound && prod.offers) {
+          const offerList = Array.isArray(prod.offers) ? prod.offers : [prod.offers];
           let best = Infinity;
           for (const offer of offerList) {
             const p = parseFloat(offer.lowPrice || offer.price || offer.highPrice || 0);
             if (p > 0 && p < best) best = p;
           }
-          if (best === Infinity) best = 0;
-          if (best > 0) result.price = best;
+          if (best !== Infinity && best > 0) result.price = best;
         }
-        if (result.name && result.price > 0) return result;
       }
     } catch {}
   }
+
+  // data-price 最優先
+  if (dataPriceFound > 0) result.price = dataPriceFound;
 
   const ogTitle = html.match(/<meta[^>]+property=["']og:title["'][^>]+content=["']([^"']+)["']/i) || html.match(/<meta[^>]+content=["']([^"']+)["'][^>]+property=["']og:title["']/i);
   if (ogTitle && !result.name) result.name = ogTitle[1].replace(/\s*[-|].*$/, '').trim();
   const ogImage = html.match(/<meta[^>]+property=["']og:image["'][^>]+content=["']([^"']+)["']/i) || html.match(/<meta[^>]+content=["']([^"']+)["'][^>]+property=["']og:image["']/i);
   if (ogImage && !result.image) result.image = ogImage[1];
 
+  // 最後 fallback（只喺上面全部搵唔到價錢時先用）
   if (result.price === 0) {
     for (const pat of [
       /itemprop=["']price["'][^>]*content=["']([0-9]+\.?[0-9]*)["']/i,
-      /"price"\s*:\s*"?([0-9]+\.?[0-9]*)"?/,
-      /HK\$\s*([0-9]+\.[0-9]{2})/,
       /data-price=["']\$?\s*([0-9]+\.?[0-9]*)["']/i,
-      /"value"\s*:\s*"?([0-9]+\.?[0-9]*)"?\s*,\s*"priceType"/,
-      /"formattedValue"\s*:\s*"\$\s*([0-9]+\.?[0-9]*)"/
+      /"formattedValue"\s*:\s*"\$\s*([0-9]+\.?[0-9]*)"/,
+      /"value"\s*:\s*([0-9]+\.?[0-9]*)\s*,\s*"priceType"/
     ]) {
       const m = html.match(pat);
       if (m) { const p = parseFloat(m[1]); if (p > 0) { result.price = p; break; } }
