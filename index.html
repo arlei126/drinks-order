@@ -437,11 +437,11 @@ async function fetchPageHtml(url) {
 
 function parseProductFromHtml(html) {
   const result = { name: '', price: 0, image: '', brand: '', unit: '' };
-  let dataPriceFound = 0;
+  const allPrices = []; // 收集所有搵到嘅價錢，最後揀最平
 
-  // ── HKTVmall data-attribute parsing (最可靠，優先級最高) ──
+  // ── HKTVmall data-attribute parsing ──
   const dataPrice = html.match(/data-price=["']\$?\s*([0-9]+\.?[0-9]*)["']/i);
-  if (dataPrice) { const p = parseFloat(dataPrice[1]); if (p > 0) dataPriceFound = p; }
+  if (dataPrice) { const p = parseFloat(dataPrice[1]); if (p > 0) allPrices.push(p); }
 
   const dataBrand = html.match(/data-tBrand=["']([^"']+)["']/i);
   if (dataBrand) result.brand = dataBrand[1];
@@ -449,7 +449,7 @@ function parseProductFromHtml(html) {
   const dataName = html.match(/data-tName=["']([^"']+)["']/i);
   if (dataName) result.name = dataName[1];
 
-  // ── JSON-LD parsing（攞 name / image，price 只喺冇 data-price 時先用） ──
+  // ── JSON-LD parsing（攞 name / image / price） ──
   const ldMatches = [...html.matchAll(/<script[^>]+type=["']application\/ld\+json["'][^>]*>([\s\S]*?)<\/script>/gi)];
   for (const m of ldMatches) {
     try {
@@ -461,40 +461,41 @@ function parseProductFromHtml(html) {
         if (prod.name) result.name = prod.name;
         if (prod.brand?.name && !result.brand) result.brand = prod.brand.name;
         if (prod.image) result.image = Array.isArray(prod.image) ? prod.image[0] : prod.image;
-        // 只喺冇 data-price 時先用 JSON-LD 嘅價錢
-        if (!dataPriceFound && prod.offers) {
+        if (prod.offers) {
           const offerList = Array.isArray(prod.offers) ? prod.offers : [prod.offers];
-          let best = Infinity;
           for (const offer of offerList) {
-            const p = parseFloat(offer.lowPrice || offer.price || offer.highPrice || 0);
-            if (p > 0 && p < best) best = p;
+            for (const k of ['lowPrice','price','highPrice']) {
+              const p = parseFloat(offer[k] || 0);
+              if (p > 0) allPrices.push(p);
+            }
           }
-          if (best !== Infinity && best > 0) result.price = best;
         }
       }
     } catch {}
   }
 
-  // data-price 最優先
-  if (dataPriceFound > 0) result.price = dataPriceFound;
+  // ── Inline JSON price patterns（搵 HKTVplus 至抵價等）──
+  const valuePrices = [...html.matchAll(/"value"\s*:\s*"?([0-9]+\.?[0-9]*)"?\s*,\s*"(?:price|currency|formattedValue|priceType)/gi)];
+  for (const m of valuePrices) { const p = parseFloat(m[1]); if (p > 0) allPrices.push(p); }
 
+  const formattedPrices = [...html.matchAll(/"formattedValue"\s*:\s*"\$\s*([0-9]+\.?[0-9]*)"/gi)];
+  for (const m of formattedPrices) { const p = parseFloat(m[1]); if (p > 0) allPrices.push(p); }
+
+  const jsonPrices = [...html.matchAll(/"price"\s*:\s*"?([0-9]+\.?[0-9]*)"?\s*[,}]/gi)];
+  for (const m of jsonPrices) { const p = parseFloat(m[1]); if (p > 0) allPrices.push(p); }
+
+  // ── og:meta ──
   const ogTitle = html.match(/<meta[^>]+property=["']og:title["'][^>]+content=["']([^"']+)["']/i) || html.match(/<meta[^>]+content=["']([^"']+)["'][^>]+property=["']og:title["']/i);
   if (ogTitle && !result.name) result.name = ogTitle[1].replace(/\s*[-|].*$/, '').trim();
   const ogImage = html.match(/<meta[^>]+property=["']og:image["'][^>]+content=["']([^"']+)["']/i) || html.match(/<meta[^>]+content=["']([^"']+)["'][^>]+property=["']og:image["']/i);
   if (ogImage && !result.image) result.image = ogImage[1];
 
-  // 最後 fallback（只喺上面全部搵唔到價錢時先用）
-  if (result.price === 0) {
-    for (const pat of [
-      /itemprop=["']price["'][^>]*content=["']([0-9]+\.?[0-9]*)["']/i,
-      /data-price=["']\$?\s*([0-9]+\.?[0-9]*)["']/i,
-      /"formattedValue"\s*:\s*"\$\s*([0-9]+\.?[0-9]*)"/,
-      /"value"\s*:\s*([0-9]+\.?[0-9]*)\s*,\s*"priceType"/
-    ]) {
-      const m = html.match(pat);
-      if (m) { const p = parseFloat(m[1]); if (p > 0) { result.price = p; break; } }
-    }
+  // ── 揀最平嘅價錢（過濾太細嘅雜訊，例如運費）──
+  if (allPrices.length > 0) {
+    const reasonable = allPrices.filter(p => p >= 10);
+    result.price = reasonable.length > 0 ? Math.min(...reasonable) : Math.min(...allPrices);
   }
+
   return result;
 }
 
