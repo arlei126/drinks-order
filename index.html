@@ -323,12 +323,9 @@
 const SUPABASE_URL = 'https://tlmkopdfrhgndkjqrbhv.supabase.co';
 const SUPABASE_KEY = 'sb_publishable_a0cbx2oNEfR3uiFVG7vvIw_AjbVaYZx';
 const db = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
-const PROXIES = [
-  url => `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`,
-  url => `https://corsproxy.io/?${encodeURIComponent(url)}`,
-  url => `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(url)}`,
-  url => `https://corsproxy.org/?url=${encodeURIComponent(url)}`,
-];
+
+// ★ 改用你自己嘅 Cloudflare Worker
+const CF_PROXY = url => `https://hktvmallmall-proxy.nattfmok.workers.dev/?url=${encodeURIComponent(url)}`;
 
 let orders = [], qty = 1;
 
@@ -402,12 +399,11 @@ function startSync() {
   db.channel('drink_orders_ch')
     .on('postgres_changes', { event: '*', schema: 'public', table: 'drink_orders' }, () => loadOrders())
     .subscribe();
-  // 60 秒 fallback（主要靠 realtime subscription，唔使每 10 秒 reload）
   setInterval(loadOrders, 60000);
 }
 
 // ── SCRAPE HKTVMALL ──
-function fetchWithTimeout(url, ms = 8000) {
+function fetchWithTimeout(url, ms = 10000) {
   const ctrl = new AbortController();
   const timer = setTimeout(() => ctrl.abort(), ms);
   return { promise: fetch(url, { signal: ctrl.signal }).finally(() => clearTimeout(timer)), ctrl };
@@ -417,73 +413,16 @@ function hasProductData(html) {
   return html && (html.includes('application/ld+json') || html.includes('og:title') || html.includes('data-price'));
 }
 
-// Stream 讀取，一搵到產品資料就即停，唔使下載成個 686KB 頁面
-async function tryProxy(proxyFn, url) {
-  const { promise, ctrl } = fetchWithTimeout(proxyFn(url));
-  const res = await promise;
-  if (!res.ok) throw new Error('not ok');
-  const reader = res.body.getReader();
-  const decoder = new TextDecoder();
-  let html = '';
-  const MAX_BYTES = 120000; // 最多讀 120KB（產品資料通常喺頭 50KB）
-  try {
-    while (html.length < MAX_BYTES) {
-      const { done, value } = await reader.read();
-      if (done) break;
-      html += decoder.decode(value, { stream: true });
-      // 一搵到關鍵產品資料就即停
-      if (html.length > 5000 && hasProductData(html)) {
-        ctrl.abort(); // 停止下載剩餘內容
-        break;
-      }
-    }
-  } catch (e) {
-    if (e.name !== 'AbortError' || !hasProductData(html)) throw e;
-  }
-  if (!hasProductData(html)) throw new Error('no data');
-  return html;
-}
-
 async function fetchPageHtml(url) {
-  // 簡單 fetch helper（唔需要 stream 嘅場景）
-  async function simpleFetch(fetchUrl) {
-    const ctrl = new AbortController();
-    const timer = setTimeout(() => ctrl.abort(), 8000);
-    try { return await fetch(fetchUrl, { signal: ctrl.signal }); }
-    finally { clearTimeout(timer); }
-  }
-
-  // 短連結 (/p/XXXX) → 先用 allorigins 解析 redirect
-  if (url.match(/hktvmall\.com\/p\/[A-Za-z0-9_]+\/?$/)) {
-    try {
-      setLoadingText('解析短連結中...');
-      const aoRes = await simpleFetch(`https://api.allorigins.win/get?url=${encodeURIComponent(url)}`);
-      if (aoRes.ok) {
-        const aoData = await aoRes.json();
-        if (aoData.contents && hasProductData(aoData.contents)) return aoData.contents;
-        if (aoData.status?.url && aoData.status.url !== url) url = aoData.status.url;
-      }
-    } catch {}
-  }
-
-  // 所有 proxy 同時試，最快成功嘅贏
   setLoadingText('正在抓取產品頁面...');
   try {
-    const html = await Promise.any(PROXIES.map(p => tryProxy(p, url)));
-    return html;
-  } catch {
-    // 全部 proxy 都失敗，最後試 allorigins GET（處理 redirect）
-    try {
-      const aoRes = await simpleFetch(`https://api.allorigins.win/get?url=${encodeURIComponent(url)}`);
-      if (aoRes.ok) {
-        const aoData = await aoRes.json();
-        if (aoData.contents && hasProductData(aoData.contents)) return aoData.contents;
-        if (aoData.status?.url && aoData.status.url !== url) {
-          const retryHtml = await Promise.any(PROXIES.map(p => tryProxy(p, aoData.status.url)));
-          return retryHtml;
-        }
-      }
-    } catch {}
+    const { promise, ctrl } = fetchWithTimeout(CF_PROXY(url), 15000);
+    const res = await promise;
+    if (!res.ok) throw new Error('not ok');
+    const html = await res.text();
+    if (hasProductData(html)) return html;
+  } catch (e) {
+    console.warn('CF Worker fetch failed:', e.message);
   }
   return null;
 }
@@ -502,7 +441,7 @@ function parseProductFromHtml(html) {
   const dataName = html.match(/data-tName=["']([^"']+)["']/i);
   if (dataName) result.name = dataName[1];
 
-  // ── JSON-LD parsing（攞 name / image / brand，同 fallback 價錢） ──
+  // ── JSON-LD parsing ──
   let ldPrice = 0;
   const ldMatches = [...html.matchAll(/<script[^>]+type=["']application\/ld\+json["'][^>]*>([\s\S]*?)<\/script>/gi)];
   for (const m of ldMatches) {
@@ -527,8 +466,6 @@ function parseProductFromHtml(html) {
   }
 
   // ── 搵 HKTVplus / 會員至抵價 ──
-  // 用第一個 "price":NUMBER match — 通常係產品本身嘅至抵價
-  // 但要確認佢低過 data-price 同唔會離譜地細（>= 基準價40%）
   let memberPrice = 0;
   const anchor = salePrice || ldPrice;
   if (anchor > 0) {
@@ -555,7 +492,6 @@ function parseProductFromHtml(html) {
   } else if (ldPrice > 0) {
     result.price = ldPrice;
   } else {
-    // 最後 fallback
     for (const pat of [
       /itemprop=["']price["'][^>]*content=["']([0-9]+\.?[0-9]*)["']/i,
       /data-price=["']\$?\s*([0-9]+\.?[0-9]*)["']/i,
@@ -635,26 +571,22 @@ async function addOrder() {
   finally { setLoading(false); }
 }
 
-// ── REMOVE (with confirm) ──
+// ── REMOVE ──
 async function removeOrder(id, name) {
   const ok = await showConfirm({
-    icon: '🗑️',
-    msg: '移除呢個落單？',
-    sub: name || '此操作無法還原',
-    okLabel: '確定移除',
+    icon: '🗑️', msg: '移除呢個落單？',
+    sub: name || '此操作無法還原', okLabel: '確定移除',
   });
   if (!ok) return;
   await db.from('drink_orders').delete().eq('id', id);
   await loadOrders();
 }
 
-// ── CLEAR ALL (with confirm) ──
+// ── CLEAR ALL ──
 async function clearAll() {
   const ok = await showConfirm({
-    icon: '🗑️',
-    msg: '清除所有落單？',
-    sub: '所有紀錄將會刪除，建議先「結單存檔」。',
-    okLabel: '確定清除全部',
+    icon: '🗑️', msg: '清除所有落單？',
+    sub: '所有紀錄將會刪除，建議先「結單存檔」。', okLabel: '確定清除全部',
   });
   if (!ok) return;
   await db.from('drink_orders').delete().neq('id', 0);
@@ -681,9 +613,7 @@ async function saveArchive() {
   if (!roundName) return;
   const grandTotal = orders.reduce((s, o) => s + (o.product.price||0)*o.qty, 0);
   const { error } = await db.from('order_archives').insert({
-    round_name: roundName,
-    orders: orders,
-    total: grandTotal
+    round_name: roundName, orders: orders, total: grandTotal
   });
   if (error) { showToast('❌ 存檔失敗：' + error.message); return; }
   closeModal('archive-modal');
