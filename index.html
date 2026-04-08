@@ -165,6 +165,7 @@
   .item-price { font-size: 15px; font-weight: 800; color: var(--accent); }
   .item-qty-badge { font-size: 11px; font-weight: 700; background: var(--surface2); color: var(--text2); padding: 2px 8px; border-radius: 20px; border: 1px solid var(--border); }
   .item-total { font-size: 12px; color: var(--text2); }
+  .item-unit-detail { font-size: 12px; color: var(--text2); font-weight: 500; }
   .item-link { font-size: 11px; color: var(--accent); text-decoration: none; opacity: 0.7; }
   .item-link:hover { opacity: 1; text-decoration: underline; }
   .btn-remove { background: none; border: none; cursor: pointer; color: #ccc; font-size: 16px; padding: 2px 4px; border-radius: 6px; transition: color 0.15s, background 0.15s; flex-shrink: 0; line-height: 1; margin-top: 2px; }
@@ -747,9 +748,10 @@ function renderItem(o) {
       <div class="item-info">
         <div class="item-name">${escHtml(p.name||'未知產品')}</div>
         <div class="item-meta">
-          <span class="item-price">${p.price?'HK$'+p.price:'價格未知'}</span>
-          <span class="item-qty-badge">× ${o.qty}${p.unit||''}</span>
-          ${o.qty>1?`<span class="item-total">= HK$${lineTotal.toFixed(1)}</span>`:''}
+          ${o.qty>1
+            ?`<span class="item-price">HK$${lineTotal.toFixed(1)}</span>
+              <span class="item-unit-detail">HK$${p.price} × ${o.qty}${p.unit||''}</span>`
+            :`<span class="item-price">${p.price?'HK$'+p.price:'價格未知'}</span>`}
         </div>
         <div style="margin-top:4px">
           <a class="item-link" href="${escHtml(o.url)}" target="_blank">🔗 HKTVmall</a>
