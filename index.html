@@ -168,6 +168,22 @@
   .individual-summary { font-size: 13px; color: var(--text2); margin-bottom: 12px; }
   .individual-summary strong { color: var(--accent); font-weight: 800; }
 
+  /* Split modal */
+  .split-total { font-size: 22px; font-weight: 900; color: var(--accent); text-align: center; margin-bottom: 4px; }
+  .split-label { font-size: 12px; color: var(--text2); text-align: center; margin-bottom: 16px; }
+  .split-people-row { display: flex; align-items: center; justify-content: center; gap: 12px; margin-bottom: 16px; }
+  .split-people-label { font-size: 14px; font-weight: 700; }
+  .split-per { background: linear-gradient(135deg, #4caf7d, #66bb6a); border-radius: 12px; padding: 16px; text-align: center; color: #fff; margin-bottom: 16px; }
+  .split-per-amount { font-size: 24px; font-weight: 900; }
+  .split-per-label { font-size: 12px; opacity: 0.85; margin-top: 2px; }
+  .split-ind { border-top: 1px solid var(--border); padding-top: 12px; }
+  .split-ind-title { font-size: 13px; font-weight: 700; color: var(--text2); margin-bottom: 8px; }
+  .split-ind-row { display: flex; justify-content: space-between; align-items: center; padding: 4px 0; font-size: 14px; }
+  .split-ind-name { font-weight: 600; }
+  .split-ind-amount { font-weight: 800; color: var(--accent); }
+  .split-copy-btn { width: 100%; margin-top: 16px; background: #4caf7d; color: #fff; border: none; border-radius: 10px; padding: 12px; font-size: 14px; font-weight: 700; cursor: pointer; font-family: inherit; }
+  .split-copy-btn:hover { background: #43a047; }
+
   .toast { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%) translateY(80px); background: #222; color: #fff; padding: 10px 20px; border-radius: 30px; font-size: 13px; font-weight: 600; transition: transform 0.3s cubic-bezier(0.34,1.56,0.64,1); z-index: 1100; white-space: nowrap; }
   .toast.show { transform: translateX(-50%) translateY(0); }
   @media (max-width: 480px) { header h1{font-size:22px} .summary-stats{gap:12px} .summary-bar .total{font-size:22px} }
@@ -254,6 +270,7 @@
       <div class="section-title">📋 團購清單</div>
       <div class="section-btns">
         <button class="btn-archive-round" onclick="openArchiveModal()">📦 結單存檔</button>
+        <button class="btn-archive-round" style="background:#4caf7d" onclick="openSplitModal()">💰 計數</button>
         <button class="btn-history-view" onclick="openHistory()">🗂️ 歷史</button>
         <button class="btn-copy" onclick="copyList()">📋 複製</button>
         <button class="btn-clear" onclick="clearAll()">清除全部</button>
@@ -273,6 +290,13 @@
     <button class="btn-history-view" style="margin-top:16px" onclick="openHistory()">🗂️ 睇歷史紀錄</button>
   </div>
 </div>
+<div class="modal-overlay" id="split-modal" onclick="handleOverlayClick(event,'split-modal')">
+  <div class="modal wide">
+    <div class="modal-title">💰 計數 <button class="btn-modal-close" onclick="closeModal('split-modal')">✕</button></div>
+    <div id="split-content"></div>
+  </div>
+</div>
+
 <div class="toast" id="toast"></div>
 
 <script>
@@ -513,6 +537,75 @@ function copyList(){
   if(Object.keys(pt).length>0){text+='\n👥 每人金額：\n';for(const[n,t]of Object.entries(pt))text+=`  ${n}：HK$${t.toFixed(1)}\n`;}
   if(individualOrders.length>0){text+='\n━━━━━━━━━━━━━━━━━━━━\n🛒 獨立認購\n\n';for(const o of individualOrders){const line=(o.product.price||0)*o.qty;text+=`• ${o.product.name||'未知'} × ${o.qty}`;if(o.product.price)text+=` (HK$${line.toFixed(1)})`;text+=` — ${o.person_name}\n`;}}
   navigator.clipboard.writeText(text).then(()=>showToast('📋 已複製到剪貼板！'));
+}
+
+// ── SPLIT 計數 ──
+let splitPeople = 0;
+function openSplitModal() {
+  const groupOrders = orders.filter(o => !o.is_individual);
+  if (groupOrders.length === 0) return showToast('未有團購落單');
+  const people = [...new Set(groupOrders.map(o => o.person_name))];
+  splitPeople = people.length;
+  renderSplit();
+  openModal('split-modal');
+}
+function changeSplitPeople(delta) {
+  splitPeople = Math.max(1, splitPeople + delta);
+  renderSplit();
+}
+function renderSplit() {
+  const groupOrders = orders.filter(o => !o.is_individual);
+  const individualOrders = orders.filter(o => o.is_individual);
+  const grandTotal = groupOrders.reduce((s, o) => s + (o.product.price || 0) * o.qty, 0);
+  const perPerson = grandTotal / splitPeople;
+
+  // Individual by person
+  const indByPerson = {};
+  for (const o of individualOrders) {
+    if (!indByPerson[o.person_name]) indByPerson[o.person_name] = 0;
+    indByPerson[o.person_name] += (o.product.price || 0) * o.qty;
+  }
+
+  let html = `
+    <div class="split-label">團購總額</div>
+    <div class="split-total">HK$${grandTotal.toFixed(1)}</div>
+    <div class="split-people-row">
+      <span class="split-people-label">夾錢人數</span>
+      <div class="mini-qty-wrap">
+        <button class="mini-qty-btn" onclick="changeSplitPeople(-1)">−</button>
+        <span class="mini-qty-val" style="min-width:30px">${splitPeople}</span>
+        <button class="mini-qty-btn" onclick="changeSplitPeople(1)">+</button>
+      </div>
+    </div>
+    <div class="split-per">
+      <div class="split-per-label">每人分擔</div>
+      <div class="split-per-amount">HK$${perPerson.toFixed(1)}</div>
+    </div>`;
+
+  if (Object.keys(indByPerson).length > 0) {
+    html += '<div class="split-ind"><div class="split-ind-title">🛒 獨立認購另計</div>';
+    for (const [name, amount] of Object.entries(indByPerson)) {
+      html += `<div class="split-ind-row"><span class="split-ind-name">🙋 ${escHtml(name)}</span><span class="split-ind-amount">+HK$${amount.toFixed(1)}</span></div>`;
+    }
+    html += '</div>';
+  }
+
+  html += `<button class="split-copy-btn" onclick="copySplit()">📋 複製計數結果</button>`;
+  document.getElementById('split-content').innerHTML = html;
+}
+function copySplit() {
+  const groupOrders = orders.filter(o => !o.is_individual);
+  const individualOrders = orders.filter(o => o.is_individual);
+  const grandTotal = groupOrders.reduce((s, o) => s + (o.product.price || 0) * o.qty, 0);
+  const perPerson = grandTotal / splitPeople;
+  let text = `💰 飲品團購計數\n━━━━━━━━━━━━━━━━━━━━\n團購總額：HK$${grandTotal.toFixed(1)}\n夾錢人數：${splitPeople}\n每人分擔：HK$${perPerson.toFixed(1)}\n`;
+  const indByPerson = {};
+  for (const o of individualOrders) { if (!indByPerson[o.person_name]) indByPerson[o.person_name] = 0; indByPerson[o.person_name] += (o.product.price || 0) * o.qty; }
+  if (Object.keys(indByPerson).length > 0) {
+    text += '\n🛒 獨立認購另計：\n';
+    for (const [name, amount] of Object.entries(indByPerson)) text += `  ${name}：+HK$${amount.toFixed(1)}\n`;
+  }
+  navigator.clipboard.writeText(text).then(() => showToast('📋 已複製計數結果！'));
 }
 
 function setLoading(on){document.getElementById('add-btn').disabled=on;document.getElementById('btn-text').textContent=on?'搜尋緊...':'🛒 即刻落單';document.getElementById('loading-bar').className='loading-bar'+(on?' show':'');if(!on)document.getElementById('loading-text').textContent='正在抓取產品資訊...';}
