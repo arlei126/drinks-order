@@ -207,6 +207,7 @@
   .btn-stock-del { font-size: 12px; color: #bbb; background: none; border: 1px solid #eee; border-radius: 8px; padding: 4px 10px; cursor: pointer; font-family: inherit; font-weight: 600; margin-left: auto; }
   .btn-stock-del:hover { color: #e53935; border-color: #ffcdd2; background: #fff0f0; }
   .stock-add-card { background: var(--surface); border: 1.5px dashed var(--border); border-radius: 12px; padding: 16px; margin-bottom: 10px; }
+  .stock-add-bottom { margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--border); }
   .stock-add-row { display: flex; gap: 8px; margin-bottom: 8px; }
   .stock-add-row input { flex: 1; padding: 10px 12px; border: 1.5px solid var(--border); border-radius: 10px; font-size: 14px; font-family: inherit; background: var(--surface2); outline: none; }
   .stock-add-row input:focus { border-color: var(--accent); background: #fff; }
@@ -271,8 +272,30 @@
 <div class="main">
   <div class="stock-add-card">
     <div class="card-title"><span>➕</span> 加飲品存貨</div>
-    <div class="stock-add-row"><input type="text" id="stock-name-input" placeholder="飲品名稱"><button class="btn-stock-add" onclick="addStock()">加入</button></div>
-    <div class="stock-add-row"><input type="text" id="stock-image-input" placeholder="圖片 URL（可留空）"></div>
+    <div class="stock-add-row"><input type="text" id="stock-url-input" placeholder="HKTVmall 連結 或 手動輸入名稱"><button class="btn-stock-add" onclick="addStock()">加入</button></div>
+    <div class="stock-add-row" id="stock-manual-image" style="display:none"><input type="text" id="stock-image-input" placeholder="圖片 URL（可留空）"></div>
+    <div class="stock-add-bottom">
+      <div class="stock-control-row" style="margin-bottom:8px">
+        <span class="stock-control-label">開緊</span>
+        <div class="level-btns" id="stock-add-level">
+          <button class="level-btn" onclick="setAddLevel(0)">🔴</button>
+          <button class="level-btn" onclick="setAddLevel(1)">🟠</button>
+          <button class="level-btn" onclick="setAddLevel(2)">🟡</button>
+          <button class="level-btn" onclick="setAddLevel(3)">🟢</button>
+          <button class="level-btn active" onclick="setAddLevel(4)">🟢</button>
+        </div>
+      </div>
+      <div class="stock-control-row">
+        <span class="stock-control-label">未開封</span>
+        <div class="mini-qty-wrap">
+          <button class="mini-qty-btn" onclick="changeAddUnopened(-1)">−</button>
+          <span class="mini-qty-val" id="stock-add-unopened">0</span>
+          <button class="mini-qty-btn" onclick="changeAddUnopened(1)">+</button>
+        </div>
+        <span class="mini-label">箱</span>
+      </div>
+    </div>
+    <div class="loading-bar" id="stock-loading"><div class="spinner"></div><span id="stock-loading-text">正在抓取產品資訊...</span></div>
   </div>
   <div id="stock-container"></div>
   <div class="empty-state" id="stock-empty"><div class="emoji">📦</div><div>未有存貨紀錄</div><div style="font-size:12px;margin-top:4px;color:#bbb">撳上面「加入」新增飲品</div></div>
@@ -362,7 +385,30 @@ function copyList(){const go=orders.filter(o=>!o.is_individual);const io=orders.
 //  STOCK
 // ══════════════════════════════════════════
 async function loadStocks(){const{data}=await db.from('drink_stock').select('*').order('created_at',{ascending:true});stocks=data||[];renderStocks();}
-async function addStock(){const name=document.getElementById('stock-name-input').value.trim();if(!name)return showToast('請輸入飲品名稱');const image=document.getElementById('stock-image-input').value.trim();const{error}=await db.from('drink_stock').insert({name,image:image||null,level:4,unopened:0});if(error){showToast('❌ '+error.message);return;}document.getElementById('stock-name-input').value='';document.getElementById('stock-image-input').value='';await loadStocks();showToast('✅ 已加入存貨！');}
+let addStockLevel=4,addStockUnopened=0;
+function setAddLevel(lv){addStockLevel=lv;document.querySelectorAll('#stock-add-level .level-btn').forEach((b,i)=>b.classList.toggle('active',i===lv));}
+function changeAddUnopened(d){addStockUnopened=Math.max(0,addStockUnopened+d);document.getElementById('stock-add-unopened').textContent=addStockUnopened;}
+document.addEventListener('input',e=>{if(e.target.id==='stock-url-input'){const v=e.target.value;document.getElementById('stock-manual-image').style.display=v.includes('hktvmall')?'none':'flex';}});
+async function addStock(){
+  const input=document.getElementById('stock-url-input').value.trim();
+  if(!input)return showToast('請輸入飲品名稱或 HKTVmall 連結');
+  let name='',image='';
+  if(input.includes('hktvmall')){
+    document.getElementById('stock-loading').className='loading-bar show';
+    document.getElementById('stock-loading-text').textContent='正在抓取產品資訊...';
+    try{const product=await fetchProductInfo(input);name=product.name;image=product.image||'';}
+    catch(e){document.getElementById('stock-loading').className='loading-bar';return showToast('❌ '+e.message);}
+    document.getElementById('stock-loading').className='loading-bar';
+  }else{name=input;image=document.getElementById('stock-image-input').value.trim();}
+  const{error}=await db.from('drink_stock').insert({name,image:image||null,level:addStockLevel,unopened:addStockUnopened});
+  if(error){showToast('❌ '+error.message);return;}
+  document.getElementById('stock-url-input').value='';document.getElementById('stock-image-input').value='';
+  document.getElementById('stock-manual-image').style.display='none';
+  addStockLevel=4;addStockUnopened=0;
+  document.querySelectorAll('#stock-add-level .level-btn').forEach((b,i)=>b.classList.toggle('active',i===4));
+  document.getElementById('stock-add-unopened').textContent='0';
+  await loadStocks();showToast('✅ 已加入存貨！');
+}
 async function updateStockLevel(id,level){await db.from('drink_stock').update({level}).eq('id',id);await loadStocks();}
 async function updateStockUnopened(id,delta){const s=stocks.find(x=>x.id===id);if(!s)return;const nv=Math.max(0,s.unopened+delta);await db.from('drink_stock').update({unopened:nv}).eq('id',id);await loadStocks();}
 async function deleteStock(id,name){const ok=await showConfirm({icon:'🗑️',msg:'刪除存貨？',sub:`「${name}」將會刪除`,okLabel:'確定刪除'});if(!ok)return;await db.from('drink_stock').delete().eq('id',id);await loadStocks();showToast('🗑️ 已刪除');}
@@ -390,7 +436,7 @@ document.addEventListener('DOMContentLoaded',()=>{
   document.getElementById('name-input').addEventListener('input',()=>{const v=document.getElementById('name-input').value.trim();if(v)localStorage.setItem('user_name',v);});
   document.getElementById('api-key-input').addEventListener('keydown',e=>{if(e.key==='Enter')saveKey();});
   document.getElementById('archive-name-input').addEventListener('keydown',e=>{if(e.key==='Enter')saveArchive();});
-  document.getElementById('stock-name-input').addEventListener('keydown',e=>{if(e.key==='Enter')addStock();});
+  document.getElementById('stock-url-input').addEventListener('keydown',e=>{if(e.key==='Enter')addStock();});
   addUrlField();updateKeyIndicator();loadOrders();startSync();
 });
 </script>
