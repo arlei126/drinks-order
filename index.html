@@ -235,11 +235,14 @@
       </div>
       <div style="display:flex;flex-direction:column;align-items:center;gap:4px">
         <div style="display:flex;gap:6px">
-          <button class="btn-settings" onclick="openModal('help-modal')">❓</button>
+          <div style="display:flex;flex-direction:column;align-items:center">
+            <button class="btn-settings" onclick="openModal('help-modal')">❓</button>
+            <div style="font-size:9px;color:rgba(255,255,255,0.6);margin-top:2px">使用說明</div>
+          </div>
           <button class="btn-settings" onclick="openSettings()">⚙️</button>
         </div>
-        <div class="key-indicator" id="key-indicator">未設定</div>
       </div>
+<div id="key-indicator" style="display:none"></div>
     </div>
     <div class="tabs">
       <button class="tab-btn active" onclick="switchTab('order')">🧃 團購</button>
@@ -273,22 +276,13 @@
 <div class="modal-overlay" id="help-modal" onclick="handleOverlayClick(event,'help-modal')"><div class="modal wide" style="max-width:560px">
   <div class="modal-title">❓ 使用說明 <button class="btn-modal-close" onclick="closeModal('help-modal')">✕</button></div>
   <div style="font-size:13px;line-height:1.8;color:var(--text)">
-    <div style="font-weight:800;font-size:14px;margin-bottom:6px">🧃 團購頁</div>
-    <div style="margin-bottom:12px">
-      <b>落單：</b>輸入名字，貼上 HKTVmall 連結，撳「即刻落單」。可以一次貼最多 5 條連結。<br>
-      <b>數量：</b>每條連結下面有 +/- 調整數量。落單後亦可以喺清單度直接 +/- 改數量。<br>
-      <b>獨立認購：</b>勾選「獨立認購」嘅產品唔會計入團購總數，會另外顯示。落單後仍可以喺清單撳 checkbox 切換。<br>
-      <b>⭕ / ✅ 標記已買：</b>產品名左邊嘅圓圈撳一下就會標記為已買（變綠 ✅），再撳還原。已買嘅產品唔俾改數量。<br>
-      <b>💰 計數：</b>自動計算每人分擔金額（團購總額 ÷ 夾錢人數），獨立認購另計。<br>
-      <b>📦 結單存檔：</b>儲存今期所有落單紀錄，之後可以喺「歷史」翻睇。<br>
-      <b>⏰ 截單時間：</b>喺右上角 ⚙️ 設定截單日期，到期後自動鎖定落單。
-    </div>
-    <div style="font-weight:800;font-size:14px;margin-bottom:6px">📦 存貨頁</div>
+    <div style="font-weight:800;font-size:14px;margin-bottom:6px">🧃 點樣落單</div>
     <div>
-      <b>加飲品：</b>貼 HKTVmall 連結自動抓取產品資料，或者手動輸入名稱。<br>
-      <b>存量等級：</b>🔴 沒有存貨 → 🟠 尚餘少量 → 🟡 尚餘一半 → 🟢 存貨充足 → 🟢 全滿<br>
-      <b>未開封箱數：</b>未拆封嘅整箱數量，用 +/- 調整。<br>
-      <b>✏️ 調整：</b>撳一下展開修改存量同箱數，任何人都可以改。
+      <b>1.</b> 輸入你的名字<br>
+      <b>2.</b> 貼上 HKTVmall 產品連結<br>
+      <b>3.</b> 揀數量，撳「即刻落單」<br>
+      <b>4.</b> 想一次落幾樣？撳「仲想加多樣？撳我啦」加多條連結<br>
+      <b>獨立認購：</b>勾選「獨立認購」嘅產品唔會計入團購總數，會獨立計錢。落單後仍可以撳 checkbox 切換。
     </div>
   </div>
 </div></div>
