@@ -286,10 +286,10 @@
       <div class="stock-control-row" style="margin-bottom:8px">
         <span class="stock-control-label">存量</span>
         <div class="level-btns-text" id="stock-add-level">
-          <button class="level-text-btn" onclick="setAddLevel(0)">🔴 已清</button>
-          <button class="level-text-btn" onclick="setAddLevel(1)">🟠 快清</button>
-          <button class="level-text-btn" onclick="setAddLevel(2)">🟡 一半</button>
-          <button class="level-text-btn" onclick="setAddLevel(3)">🟢 充足</button>
+          <button class="level-text-btn" onclick="setAddLevel(0)">🔴 沒有存貨</button>
+          <button class="level-text-btn" onclick="setAddLevel(1)">🟠 尚餘少量</button>
+          <button class="level-text-btn" onclick="setAddLevel(2)">🟡 尚餘一半</button>
+          <button class="level-text-btn" onclick="setAddLevel(3)">🟢 存貨充足</button>
           <button class="level-text-btn active" onclick="setAddLevel(4)">🟢 全滿</button>
         </div>
       </div>
@@ -316,7 +316,7 @@ const SUPABASE_KEY='sb_publishable_a0cbx2oNEfR3uiFVG7vvIw_AjbVaYZx';
 const db=supabase.createClient(SUPABASE_URL,SUPABASE_KEY);
 const CF_PROXY=url=>`https://hktvmallmall-proxy.nattfmok.workers.dev/?url=${encodeURIComponent(url)}`;
 let orders=[],stocks=[],urlFieldCount=0;
-const LEVELS=[{emoji:'🔴',text:'已清'},{emoji:'🟠',text:'快清'},{emoji:'🟡',text:'一半'},{emoji:'🟢',text:'充足'},{emoji:'🟢',text:'全滿'}];
+const LEVELS=[{emoji:'🔴',text:'沒有存貨'},{emoji:'🟠',text:'尚餘少量'},{emoji:'🟡',text:'尚餘一半'},{emoji:'🟢',text:'存貨充足'},{emoji:'🟢',text:'全滿'}];
 
 function extractProductId(url){const m=url.match(/\/p\/([A-Za-z0-9_\-]+)/);return m?m[1]:url;}
 
