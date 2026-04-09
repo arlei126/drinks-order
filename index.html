@@ -204,6 +204,10 @@
   .level-btn { width: 32px; height: 28px; border: 1.5px solid var(--border); border-radius: 6px; background: none; cursor: pointer; font-size: 14px; display: flex; align-items: center; justify-content: center; transition: all 0.15s; }
   .level-btn.active { border-color: #4caf50; background: #e8f5e9; }
   .level-btn:hover { border-color: #4caf50; }
+  .level-btns-text { display: flex; gap: 4px; flex-wrap: wrap; }
+  .level-text-btn { border: 1.5px solid var(--border); border-radius: 8px; background: none; cursor: pointer; font-size: 12px; font-weight: 600; font-family: inherit; padding: 4px 8px; transition: all 0.15s; white-space: nowrap; }
+  .level-text-btn.active { border-color: #4caf50; background: #e8f5e9; }
+  .level-text-btn:hover { border-color: #4caf50; }
   .btn-stock-del { font-size: 12px; color: #bbb; background: none; border: 1px solid #eee; border-radius: 8px; padding: 4px 10px; cursor: pointer; font-family: inherit; font-weight: 600; margin-left: auto; }
   .btn-stock-del:hover { color: #e53935; border-color: #ffcdd2; background: #fff0f0; }
   .stock-add-card { background: var(--surface); border: 1.5px dashed var(--border); border-radius: 12px; padding: 16px; margin-bottom: 10px; }
@@ -270,19 +274,21 @@
 <!-- ============ STOCK TAB ============ -->
 <div class="tab-page" id="page-stock">
 <div class="main">
+  <div id="stock-container"></div>
+  <div class="empty-state" id="stock-empty"><div class="emoji">📦</div><div>未有存貨紀錄</div><div style="font-size:12px;margin-top:4px;color:#bbb">撳下面「加入」新增飲品</div></div>
   <div class="stock-add-card">
     <div class="card-title"><span>➕</span> 加飲品存貨</div>
     <div class="stock-add-row"><input type="text" id="stock-url-input" placeholder="HKTVmall 連結 或 手動輸入名稱"><button class="btn-stock-add" onclick="addStock()">加入</button></div>
     <div class="stock-add-row" id="stock-manual-image" style="display:none"><input type="text" id="stock-image-input" placeholder="圖片 URL（可留空）"></div>
     <div class="stock-add-bottom">
       <div class="stock-control-row" style="margin-bottom:8px">
-        <span class="stock-control-label">開緊</span>
-        <div class="level-btns" id="stock-add-level">
-          <button class="level-btn" onclick="setAddLevel(0)">🔴</button>
-          <button class="level-btn" onclick="setAddLevel(1)">🟠</button>
-          <button class="level-btn" onclick="setAddLevel(2)">🟡</button>
-          <button class="level-btn" onclick="setAddLevel(3)">🟢</button>
-          <button class="level-btn active" onclick="setAddLevel(4)">🟢</button>
+        <span class="stock-control-label">存量</span>
+        <div class="level-btns-text" id="stock-add-level">
+          <button class="level-text-btn" onclick="setAddLevel(0)">🔴 已清</button>
+          <button class="level-text-btn" onclick="setAddLevel(1)">🟠 快清</button>
+          <button class="level-text-btn" onclick="setAddLevel(2)">🟡 一半</button>
+          <button class="level-text-btn" onclick="setAddLevel(3)">🟢 充足</button>
+          <button class="level-text-btn active" onclick="setAddLevel(4)">🟢 全滿</button>
         </div>
       </div>
       <div class="stock-control-row">
@@ -297,8 +303,6 @@
     </div>
     <div class="loading-bar" id="stock-loading"><div class="spinner"></div><span id="stock-loading-text">正在抓取產品資訊...</span></div>
   </div>
-  <div id="stock-container"></div>
-  <div class="empty-state" id="stock-empty"><div class="emoji">📦</div><div>未有存貨紀錄</div><div style="font-size:12px;margin-top:4px;color:#bbb">撳上面「加入」新增飲品</div></div>
 </div>
 </div>
 
@@ -386,7 +390,7 @@ function copyList(){const go=orders.filter(o=>!o.is_individual);const io=orders.
 // ══════════════════════════════════════════
 async function loadStocks(){const{data}=await db.from('drink_stock').select('*').order('created_at',{ascending:true});stocks=data||[];renderStocks();}
 let addStockLevel=4,addStockUnopened=0;
-function setAddLevel(lv){addStockLevel=lv;document.querySelectorAll('#stock-add-level .level-btn').forEach((b,i)=>b.classList.toggle('active',i===lv));}
+function setAddLevel(lv){addStockLevel=lv;document.querySelectorAll('#stock-add-level .level-text-btn').forEach((b,i)=>b.classList.toggle('active',i===lv));}
 function changeAddUnopened(d){addStockUnopened=Math.max(0,addStockUnopened+d);document.getElementById('stock-add-unopened').textContent=addStockUnopened;}
 document.addEventListener('input',e=>{if(e.target.id==='stock-url-input'){const v=e.target.value;document.getElementById('stock-manual-image').style.display=v.includes('hktvmall')?'none':'flex';}});
 async function addStock(){
@@ -405,7 +409,7 @@ async function addStock(){
   document.getElementById('stock-url-input').value='';document.getElementById('stock-image-input').value='';
   document.getElementById('stock-manual-image').style.display='none';
   addStockLevel=4;addStockUnopened=0;
-  document.querySelectorAll('#stock-add-level .level-btn').forEach((b,i)=>b.classList.toggle('active',i===4));
+  document.querySelectorAll('#stock-add-level .level-text-btn').forEach((b,i)=>b.classList.toggle('active',i===4));
   document.getElementById('stock-add-unopened').textContent='0';
   await loadStocks();showToast('✅ 已加入存貨！');
 }
@@ -421,7 +425,7 @@ function renderStocks(){
     const lv=LEVELS[s.level]||LEVELS[4];
     const imgHtml=s.image?`<img class="stock-img" src="${escHtml(s.image)}" alt="" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'"><div class="stock-img-placeholder" style="display:none">🧃</div>`:'<div class="stock-img-placeholder">🧃</div>';
     const levelBtns=LEVELS.map((l,i)=>`<button class="level-btn${s.level===i?' active':''}" onclick="updateStockLevel(${s.id},${i})" title="${l.text}">${l.emoji}</button>`).join('');
-    return`<div class="stock-card"><div class="stock-top">${imgHtml}<div class="stock-info"><div class="stock-name">${escHtml(s.name)}</div><div class="stock-status"><span class="stock-level-badge">${lv.emoji} 開緊：${lv.text}</span>${s.unopened>0?`<span class="stock-unopened">📦 未開封：${s.unopened}箱</span>`:''}</div></div></div><div class="stock-controls"><div class="stock-control-row"><span class="stock-control-label">存量</span><div class="level-btns">${levelBtns}</div></div><div class="stock-control-row"><span class="stock-control-label">未開封</span><div class="mini-qty-wrap"><button class="mini-qty-btn" onclick="updateStockUnopened(${s.id},-1)">−</button><span class="mini-qty-val">${s.unopened}</span><button class="mini-qty-btn" onclick="updateStockUnopened(${s.id},1)">+</button></div><button class="btn-stock-del" onclick="deleteStock(${s.id},'${escHtml(s.name)}')">🗑️</button></div></div></div>`;
+    return`<div class="stock-card"><div class="stock-top">${imgHtml}<div class="stock-info"><div class="stock-name">${escHtml(s.name)}</div><div class="stock-status"><span class="stock-level-badge">${lv.emoji} ${lv.text}</span>${s.unopened>0?`<span class="stock-unopened">📦 未開封：${s.unopened}箱</span>`:''}</div></div></div><div class="stock-controls"><div class="stock-control-row"><span class="stock-control-label">存量</span><div class="level-btns">${levelBtns}</div></div><div class="stock-control-row"><span class="stock-control-label">未開封</span><div class="mini-qty-wrap"><button class="mini-qty-btn" onclick="updateStockUnopened(${s.id},-1)">−</button><span class="mini-qty-val">${s.unopened}</span><button class="mini-qty-btn" onclick="updateStockUnopened(${s.id},1)">+</button></div><button class="btn-stock-del" onclick="deleteStock(${s.id},'${escHtml(s.name)}')">🗑️</button></div></div></div>`;
   }).join('');
 }
 
