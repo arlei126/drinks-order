@@ -472,7 +472,7 @@ function copyList(){const go=orders.filter(o=>!o.is_individual);const io=orders.
 // ══════════════════════════════════════════
 //  STOCK
 // ══════════════════════════════════════════
-async function loadStocks(){const{data}=await db.from('drink_stock').select('*').order('created_at',{ascending:true});stocks=data||[];renderStocks();}
+async function loadStocks(){const{data}=await db.from('drink_stock').select('*').order('created_at',{ascending:true});stocks=data||[];renderStocks();render();}
 let addStockLevel=4,addStockUnopened=0;
 function setAddLevel(lv){addStockLevel=lv;document.querySelectorAll('#stock-add-level .level-text-btn').forEach((b,i)=>b.classList.toggle('active',i===lv));}
 function changeAddUnopened(d){addStockUnopened=Math.max(0,addStockUnopened+d);document.getElementById('stock-add-unopened').textContent=addStockUnopened;}
