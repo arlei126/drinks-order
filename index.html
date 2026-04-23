@@ -477,13 +477,13 @@ async function confirmPriceEdit(){
   const tq=group.reduce((s,o)=>s+o.qty,0);
   const oldTotal=(p.price||0)*tq;
   const newUnit=v/tq;
+  closeModal('price-edit-modal');
   const ok=await showConfirm({icon:'💵',msg:'確定修改總價？',sub:`由 HK$${oldTotal.toFixed(1)} 改為 HK$${v.toFixed(1)}\n(新單價 HK$${newUnit.toFixed(2)} × ${tq})`,okLabel:'確定修改',okColor:'#ff6b35'});
   if(!ok)return;
   for(const o of group){
     const newProduct={...o.product,price:newUnit};
     await db.from('drink_orders').update({product:newProduct}).eq('id',o.id);
   }
-  closeModal('price-edit-modal');
   await loadOrders();
   showToast('✅ 已修改總價');
 }
