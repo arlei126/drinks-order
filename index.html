@@ -152,6 +152,8 @@
   .btn-purchased-icon{background:none;border:none;cursor:pointer;font-size:16px;flex-shrink:0;padding:0;line-height:1;margin-top:1px;transition:transform 0.15s}
   .btn-purchased-icon:hover{transform:scale(1.2)}
   .btn-move-stock{font-size:11px;color:#2e7d32;background:#e8f5e9;border:1px solid #c8e6c9;border-radius:6px;padding:3px 8px;margin-left:8px;cursor:pointer;font-family:inherit;font-weight:700;display:inline-block}
+  .btn-edit-price{font-size:11px;color:var(--accent);background:rgba(255,107,53,0.08);border:1px solid rgba(255,107,53,0.2);border-radius:6px;padding:3px 8px;margin-left:8px;cursor:pointer;font-family:inherit;font-weight:700;display:inline-block}
+  .btn-edit-price:hover{background:rgba(255,107,53,0.15)}
   .btn-move-stock:hover{background:#c8e6c9}
   .btn-move-stock.disabled{color:#999;background:#f0f0f0;border-color:#e0e0e0;cursor:default}
   .btn-move-stock.disabled:hover{background:#f0f0f0}
@@ -276,6 +278,19 @@
 <div class="modal-overlay" id="archive-modal" onclick="handleOverlayClick(event,'archive-modal')"><div class="modal wide"><div class="modal-title">📦 結單存檔 <button class="btn-modal-close" onclick="closeModal('archive-modal')">✕</button></div><div class="archive-preview" id="archive-preview"></div><div class="modal-label">為今期命名</div><input type="text" class="archive-input" id="archive-name-input" placeholder="例：2026年4月第一期"><button class="btn-archive-save" onclick="saveArchive()">💾 儲存存檔</button></div></div>
 <div class="modal-overlay" id="history-modal" onclick="handleOverlayClick(event,'history-modal')"><div class="modal wide history-modal"><div class="modal-title">🗂️ 歷史紀錄 <button class="btn-modal-close" onclick="closeModal('history-modal')">✕</button></div><div class="history-scroll" id="history-container"></div></div></div>
 <div class="modal-overlay" id="split-modal" onclick="handleOverlayClick(event,'split-modal')"><div class="modal wide"><div class="modal-title">💰 計數 <button class="btn-modal-close" onclick="closeModal('split-modal')">✕</button></div><div id="split-content"></div></div></div>
+
+<div class="modal-overlay" id="price-edit-modal" onclick="handleOverlayClick(event,'price-edit-modal')"><div class="modal">
+  <div class="modal-title">💵 修改總價 <button class="btn-modal-close" onclick="closeModal('price-edit-modal')">✕</button></div>
+  <div id="price-edit-product" style="font-size:13px;color:var(--text2);margin-bottom:12px;padding:10px 12px;background:var(--surface2);border-radius:8px"></div>
+  <div style="display:flex;align-items:center;gap:12px;margin-bottom:8px">
+    <span style="font-size:12px;font-weight:700;color:var(--text2)">原本總價</span>
+    <span id="price-edit-old" style="font-size:16px;font-weight:800;color:var(--text2);text-decoration:line-through"></span>
+  </div>
+  <div class="modal-label" style="margin-top:12px">新總價 (HKD)</div>
+  <input type="number" id="price-edit-input" class="archive-input" step="0.1" placeholder="例：165.5" style="margin-bottom:6px">
+  <div id="price-edit-preview" style="font-size:12px;color:var(--accent);font-weight:700;margin-bottom:12px;min-height:18px"></div>
+  <button class="btn-archive-save" onclick="confirmPriceEdit()">確認修改</button>
+</div></div>
 
 <div class="modal-overlay" id="help-modal" onclick="handleOverlayClick(event,'help-modal')"><div class="modal wide" style="max-width:560px">
   <div class="modal-title">❓ 使用說明 <button class="btn-modal-close" onclick="closeModal('help-modal')">✕</button></div>
@@ -429,6 +444,50 @@ async function addOrder(){
 async function updateQty(id,delta){const o=orders.find(x=>x.id===id);if(!o||o.is_purchased)return;const nq=o.qty+delta;if(nq<=0)return removeOrder(id,(o.product.name||'未知').slice(0,30));await db.from('drink_orders').update({qty:nq}).eq('id',id);await loadOrders();}
 async function togglePurchased(pid){const tgt=orders.filter(o=>extractProductId(o.url)===pid);if(tgt.length===0)return;const allP=tgt.every(o=>o.is_purchased);const nv=!allP;for(const o of tgt){await db.from('drink_orders').update({is_purchased:nv}).eq('id',o.id);}await loadOrders();}
 async function toggleIndividual(id){const o=orders.find(x=>x.id===id);if(!o)return;await db.from('drink_orders').update({is_individual:!o.is_individual}).eq('id',id);await loadOrders();showToast(o.is_individual?'已改為團購':'已改為獨立認購');}
+let editPricePid=null;
+function openPriceEdit(pid){
+  editPricePid=pid;
+  const group=orders.filter(o=>extractProductId(o.url)===pid);
+  if(group.length===0)return;
+  const p=group[0].product;
+  const tq=group.reduce((s,o)=>s+o.qty,0);
+  const oldTotal=(p.price||0)*tq;
+  document.getElementById('price-edit-product').textContent=(p.name||'未知').slice(0,50);
+  document.getElementById('price-edit-old').textContent='HK$'+oldTotal.toFixed(1)+' (HK$'+(p.price||0)+' × '+tq+')';
+  document.getElementById('price-edit-input').value='';
+  document.getElementById('price-edit-preview').textContent='';
+  openModal('price-edit-modal');
+  setTimeout(()=>document.getElementById('price-edit-input').focus(),100);
+}
+document.addEventListener('input',e=>{
+  if(e.target.id==='price-edit-input'){
+    const v=parseFloat(e.target.value);
+    if(isNaN(v)||v<=0){document.getElementById('price-edit-preview').textContent='';return;}
+    const group=orders.filter(o=>extractProductId(o.url)===editPricePid);
+    const tq=group.reduce((s,o)=>s+o.qty,0);
+    if(tq>0){const newUnit=v/tq;document.getElementById('price-edit-preview').textContent=`新單價：HK$${newUnit.toFixed(2)} × ${tq} = HK$${v.toFixed(1)}`;}
+  }
+});
+async function confirmPriceEdit(){
+  const v=parseFloat(document.getElementById('price-edit-input').value);
+  if(isNaN(v)||v<=0)return showToast('請輸入有效價錢');
+  const group=orders.filter(o=>extractProductId(o.url)===editPricePid);
+  if(group.length===0)return;
+  const p=group[0].product;
+  const tq=group.reduce((s,o)=>s+o.qty,0);
+  const oldTotal=(p.price||0)*tq;
+  const newUnit=v/tq;
+  const ok=await showConfirm({icon:'💵',msg:'確定修改總價？',sub:`由 HK$${oldTotal.toFixed(1)} 改為 HK$${v.toFixed(1)}\n(新單價 HK$${newUnit.toFixed(2)} × ${tq})`,okLabel:'確定修改',okColor:'#ff6b35'});
+  if(!ok)return;
+  for(const o of group){
+    const newProduct={...o.product,price:newUnit};
+    await db.from('drink_orders').update({product:newProduct}).eq('id',o.id);
+  }
+  closeModal('price-edit-modal');
+  await loadOrders();
+  showToast('✅ 已修改總價');
+}
+
 async function moveToStock(pid){
   const group=orders.filter(o=>extractProductId(o.url)===pid);
   if(group.length===0)return;
@@ -465,7 +524,7 @@ function copySplit(){const go=orders.filter(o=>!o.is_individual);const io=orders
 // ══════════════════════════════════════════
 function render(){const c=document.getElementById('orders-container');const ic=document.getElementById('individual-container');const is=document.getElementById('individual-section');const es=document.getElementById('empty-state');const os=document.getElementById('orders-section');const sb=document.getElementById('summary-bar');if(orders.length===0){es.style.display='block';os.style.display='none';sb.style.display='none';return;}es.style.display='none';os.style.display='block';const go=orders.filter(o=>!o.is_individual);const io=orders.filter(o=>o.is_individual);let gt=0,ti=0;for(const o of go){gt+=(o.product.price||0)*o.qty;ti+=o.qty;}const ppl=[...new Set(go.map(o=>o.person_name))];if(go.length>0){sb.style.display='flex';document.getElementById('total-amount').textContent='HK$'+gt.toFixed(1);document.getElementById('stat-items').textContent=ti;document.getElementById('stat-people').textContent=ppl.length;}else{sb.style.display='none';}c.innerHTML=renderProductGroup(go);if(io.length>0){is.style.display='block';const it=io.reduce((s,o)=>s+(o.product.price||0)*o.qty,0);document.getElementById('individual-summary').innerHTML=`共 ${io.length} 件，合計 <strong>HK$${it.toFixed(1)}</strong>（不計入團購）`;ic.innerHTML=renderProductGroup(io);}else{is.style.display='none';}}
 function renderProductGroup(ol){const bp={},po=[];for(const o of ol){const pid=extractProductId(o.url);if(!bp[pid]){bp[pid]={product:o.product,url:o.url,orders:[]};po.push(pid);}bp[pid].orders.push(o);}return po.map(pid=>renderProductCard(pid,bp[pid])).join('');}
-function renderProductCard(pid,group){const p=group.product;const tq=group.orders.reduce((s,o)=>s+o.qty,0);const tp=(p.price||0)*tq;const allP=group.orders.every(o=>o.is_purchased);const inStock=stocks.some(s=>s.name===p.name);const imgHtml=p.image?`<img class="item-img" src="${escHtml(p.image)}" alt="" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'"><div class="img-placeholder" style="display:none">🧃</div>`:'<div class="img-placeholder">🧃</div>';const priceHtml=tq>1?`<span class="item-price">HK$${tp.toFixed(1)}</span><span class="item-unit-detail">HK$${p.price} × ${tq}</span>`:`<span class="item-price">${p.price?'HK$'+p.price:'價格未知'}</span>`;const pIcon=allP?'✅':'⭕';const personsHtml=group.orders.map(o=>{const ns=(p.name||'未知').slice(0,30);const dis=o.is_purchased?'disabled':'';return`<div class="order-person-row"><span class="person-tag">🙋 ${escHtml(o.person_name)}</span><div class="inline-qty-wrap"><button class="inline-qty-btn" onclick="updateQty(${o.id},-1)" ${dis}>−</button><span class="inline-qty-val">${o.qty}</span><button class="inline-qty-btn" onclick="updateQty(${o.id},1)" ${dis}>+</button></div><button class="btn-remove" style="font-size:12px;display:flex;align-items:center;gap:3px;color:var(--text2)" onclick="toggleIndividual(${o.id})" title="${o.is_individual?'改為團購':'改為獨立認購'}"><input type="checkbox" style="width:14px;14px;accent-color:var(--accent);pointer-events:none;vertical-align:middle" ${o.is_individual?'checked':''}> <span style="font-size:11px;vertical-align:middle">獨立認購</span></button><button class="btn-remove" onclick="removeOrder(${o.id},'${escHtml(ns)}')" title="移除">✕</button></div>`;}).join('');const stockBtn=allP?(inStock?`<span class="btn-move-stock disabled">✅ 已加入存貨</span>`:`<button class="btn-move-stock" onclick="moveToStock('${escHtml(pid)}')">📦 加入存貨</button>`):'';return`<div class="product-card${allP?' purchased':''}"><div class="product-top">${imgHtml}<div class="item-info"><div class="item-name"><button class="btn-purchased-icon" onclick="togglePurchased('${escHtml(pid)}')" title="${allP?'標記未買':'標記已買'}">${pIcon}</button><span class="item-name-text">${escHtml(p.name||'未知產品')}</span></div><div class="item-meta">${priceHtml}</div><div style="margin-top:4px"><a class="item-link" href="${escHtml(group.url)}" target="_blank">🔗 HKTVmall</a>${p.brand?`<span style="font-size:11px;color:#aaa;margin-left:8px">${escHtml(p.brand)}</span>`:''}${stockBtn}</div></div></div><div class="order-persons">${personsHtml}</div></div>`;}
+function renderProductCard(pid,group){const p=group.product;const tq=group.orders.reduce((s,o)=>s+o.qty,0);const tp=(p.price||0)*tq;const allP=group.orders.every(o=>o.is_purchased);const inStock=stocks.some(s=>s.name===p.name);const imgHtml=p.image?`<img class="item-img" src="${escHtml(p.image)}" alt="" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'"><div class="img-placeholder" style="display:none">🧃</div>`:'<div class="img-placeholder">🧃</div>';const priceHtml=tq>1?`<span class="item-price">HK$${tp.toFixed(1)}</span><span class="item-unit-detail">HK$${p.price} × ${tq}</span>`:`<span class="item-price">${p.price?'HK$'+p.price:'價格未知'}</span>`;const pIcon=allP?'✅':'⭕';const personsHtml=group.orders.map(o=>{const ns=(p.name||'未知').slice(0,30);const dis=o.is_purchased?'disabled':'';return`<div class="order-person-row"><span class="person-tag">🙋 ${escHtml(o.person_name)}</span><div class="inline-qty-wrap"><button class="inline-qty-btn" onclick="updateQty(${o.id},-1)" ${dis}>−</button><span class="inline-qty-val">${o.qty}</span><button class="inline-qty-btn" onclick="updateQty(${o.id},1)" ${dis}>+</button></div><button class="btn-remove" style="font-size:12px;display:flex;align-items:center;gap:3px;color:var(--text2)" onclick="toggleIndividual(${o.id})" title="${o.is_individual?'改為團購':'改為獨立認購'}"><input type="checkbox" style="width:14px;14px;accent-color:var(--accent);pointer-events:none;vertical-align:middle" ${o.is_individual?'checked':''}> <span style="font-size:11px;vertical-align:middle">獨立認購</span></button><button class="btn-remove" onclick="removeOrder(${o.id},'${escHtml(ns)}')" title="移除">✕</button></div>`;}).join('');const stockBtn=allP?(inStock?`<span class="btn-move-stock disabled">✅ 已加入存貨</span>`:`<button class="btn-move-stock" onclick="moveToStock('${escHtml(pid)}')">📦 加入存貨</button>`):'';return`<div class="product-card${allP?' purchased':''}"><div class="product-top">${imgHtml}<div class="item-info"><div class="item-name"><button class="btn-purchased-icon" onclick="togglePurchased('${escHtml(pid)}')" title="${allP?'標記未買':'標記已買'}">${pIcon}</button><span class="item-name-text">${escHtml(p.name||'未知產品')}</span></div><div class="item-meta">${priceHtml}</div><div style="margin-top:4px"><a class="item-link" href="${escHtml(group.url)}" target="_blank">🔗 HKTVmall</a>${p.brand?`<span style="font-size:11px;color:#aaa;margin-left:8px">${escHtml(p.brand)}</span>`:''}<button class="btn-edit-price" onclick="openPriceEdit('${escHtml(pid)}')" title="修改總價">💵 改價</button>${stockBtn}</div></div></div><div class="order-persons">${personsHtml}</div></div>`;}
 
 function copyList(){const go=orders.filter(o=>!o.is_individual);const io=orders.filter(o=>o.is_individual);const bp={},po=[];for(const o of go){const pid=extractProductId(o.url);if(!bp[pid]){bp[pid]={product:o.product,orders:[]};po.push(pid);}bp[pid].orders.push(o);}let t='🧃 飲品團購清單\n━━━━━━━━━━━━━━━━━━━━\n\n',g=0;for(const pid of po){const gr=bp[pid];const tq=gr.orders.reduce((s,o)=>s+o.qty,0);const tp=(gr.product.price||0)*tq;g+=tp;const persons=gr.orders.map(o=>`${o.person_name} ×${o.qty}`).join(', ');t+=`• ${gr.product.name||'未知'}`;if(gr.product.price)t+=`\n  HK$${gr.product.price} × ${tq} = HK$${tp.toFixed(1)}`;t+=`\n  ${persons}\n\n`;}t+=`━━━━━━━━━━━━━━━━━━━━\n💰 團購總計：HK$${g.toFixed(1)}\n`;const pt={};for(const o of go){if(!pt[o.person_name])pt[o.person_name]=0;pt[o.person_name]+=(o.product.price||0)*o.qty;}if(Object.keys(pt).length>0){t+='\n🙋 每人金額：\n';for(const[n,v]of Object.entries(pt))t+=`  ${n}：HK$${v.toFixed(1)}\n`;}if(io.length>0){t+='\n━━━━━━━━━━━━━━━━━━━━\n🛒 獨立認購\n\n';for(const o of io){const l=(o.product.price||0)*o.qty;t+=`• ${o.product.name||'未知'} × ${o.qty}`;if(o.product.price)t+=` (HK$${l.toFixed(1)})`;t+=` — ${o.person_name}\n`;}}navigator.clipboard.writeText(t).then(()=>showToast('📋 已複製到剪貼板！'));}
 
